@@ -815,6 +815,9 @@
       });
     }
 
+    // Pages without the bag panel (buy, safety) have nothing to reconnect to.
+    if (!els.result) return;
+
     // If this browser already trusts the site, reconnect without a popup.
     // Wallets that don't support onlyIfTrusted just reject; we stay quiet.
     var eager = detectWallets().filter(function (w) { return w.eager; });

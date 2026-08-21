@@ -378,6 +378,55 @@ a { color: var(--pink-3); }
   padding: clamp(1.2rem, 3vw, 2rem);
 }
 
+/* One-line version of the safety notice, with the detail a click away. */
+.safety-lite {
+  display: flex; gap: .7rem; align-items: flex-start;
+  margin: 1.2rem 0 0;
+  padding: .8rem 1rem;
+  background: rgba(20, 241, 149, .1);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  font-size: .88rem; line-height: 1.5;
+}
+.safety-lite strong { color: var(--mint); }
+.safety-lite a { color: var(--cream); font-weight: 800; white-space: nowrap; }
+.safety-lite .safety-icon { font-size: 1.2rem; line-height: 1.3; }
+
+/* Compact buy call-to-action on the main page. */
+.buy-cta {
+  display: flex; flex-wrap: wrap; gap: 1.2rem;
+  align-items: center; justify-content: space-between;
+  max-width: 860px; margin: 0 auto;
+}
+.buy-cta-copy { flex: 1 1 320px; }
+.buy-cta-title {
+  margin: 0 0 .3rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  color: var(--cream);
+  -webkit-text-stroke: 7px var(--ink); paint-order: stroke fill;
+}
+.buy-cta-copy p { margin: 0; font-size: .92rem; color: var(--pink-3); font-weight: 700; }
+.buy-cta-actions { display: flex; flex-direction: column; gap: .5rem; align-items: center; }
+.buy-cta-alt { font-size: .8rem; font-weight: 700; color: var(--pink-3); }
+
+/* Long-form pages (safety). */
+.prose { max-width: 68ch; margin: 0 auto; }
+.prose h2 {
+  margin: 2rem 0 .6rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 3vw, 1.8rem);
+  color: var(--cream);
+  -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill;
+}
+.prose h2:first-of-type { margin-top: 0; }
+.prose p { margin: 0 0 .9rem; }
+.prose ul { margin: 0 0 .9rem; padding-left: 1.2rem; }
+.prose li { margin-bottom: .4rem; }
+.prose strong { color: var(--pink-2); }
+.prose .ca-value { display: inline-block; }
+.prose-back { margin-top: 2.5rem; font-weight: 800; }
+
 /* ─────────────── buy / swap ─────────────── */
 
 .buy-card { max-width: 860px; margin: 0 auto; }

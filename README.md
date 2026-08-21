@@ -5,14 +5,37 @@ backend, no secrets. Every number on the page is read live, client-side, from
 public APIs.
 
 ```
-index.html          the whole page
-assets/styles.css   sticker-book styles
-assets/app.js       config + live data + interactions
+index.html          main page: hero, burn tracker, bag checker, stats, community
+buy.html            the Jupiter swap widget, on its own so it can breathe
+safety.html         the long-form "is it safe?" answers
+assets/styles.css   sticker-book styles, shared by all three pages
+assets/app.js       config + live data + interactions, shared by all three
 assets/logo.jpg     the coin art
 assets/memes/       meme gallery images (drop files here)
-nixpacks.toml       tells Railway to serve this as a static site
-railway.json        Railway build/deploy settings
+nixpacks.toml       inert — see "Deploying on Railway"
+railway.json        inert — see "Deploying on Railway"
 ```
+
+### Three pages, one script
+
+`app.js` is loaded by all three pages and no-ops on anything that isn't
+present — every builder starts with a `$()` lookup and returns early if its
+element is missing. So the burn tracker code simply does nothing on `buy.html`,
+and the swap code does nothing on `index.html`. If you add a feature, keep that
+property: guard on the element, don't guard on the page.
+
+The header and footer are duplicated across the three files. That is the cost
+of having no build step, and it is deliberate — if you change the nav, change
+it in all three.
+
+### Where the safety copy lives
+
+Each page carries a one-line notice and links to `safety.html` for the detail.
+The short lines are the load-bearing ones and should stay: read-only on the bag
+checker, and "a swap asks you to sign" on the buy page. The long-form page is
+where the drainer-vs-swap explanation, the unverified-token explanation and the
+impostor-mint warning live. Keep it that way — the inline copy had grown into a
+wall of text that nobody was going to read.
 
 ## Run it locally
 

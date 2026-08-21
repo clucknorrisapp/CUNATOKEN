@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Is it safe? — CUNALINGUS ($CUNA)</title>
+<meta name="description" content="What this site does with your wallet, how to tell a real swap from a drainer, and why Jupiter flags $CUNA as unverified.">
+<meta name="theme-color" content="#3D0A26">
+<link rel="icon" href="assets/logo.jpg">
+<link rel="apple-touch-icon" href="assets/logo.jpg">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Is it safe? — $CUNA">
+<meta property="og:description" content="What this site does with your wallet, and how to spot the thing that isn't us.">
+<meta property="og:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Is it safe? — $CUNA">
+<meta name="twitter:description" content="What this site does with your wallet, and how to spot the thing that isn't us.">
+<meta name="twitter:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://lite-api.jup.ag">
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="bg" aria-hidden="true">
+  <span class="blob blob-1"></span>
+  <span class="blob blob-2"></span>
+  <span class="blob blob-3"></span>
+  <span class="sparkles"></span>
+</div>
+
+<header class="nav">
+  <a class="nav-brand" href="index.html">
+    <img src="assets/logo.jpg" alt="" width="44" height="44">
+    <span>CUNA</span>
+  </a>
+  <div class="nav-social" data-nav-social>
+    <a class="social-btn" data-social="telegram" href="https://t.me/cunaonsol"
+       target="_blank" rel="noopener" aria-label="$CUNA on Telegram">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+    </a>
+    <a class="social-btn" data-social="x" href="https://x.com/cunatoken"
+       target="_blank" rel="noopener" aria-label="$CUNA on X">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+    </a>
+  </div>
+  <nav class="nav-links" aria-label="Sections">
+    <a href="index.html#burn">Burn</a>
+    <a href="index.html#bag">Your bag</a>
+    <a href="index.html#stats">Stats</a>
+    <a href="index.html#community">Community</a>
+  </nav>
+  <a class="btn btn-buy btn-sm" href="buy.html">Buy <span class="nav-buy-ticker">$CUNA</span></a>
+</header>
+
+<main id="main">
+
+  <section class="section" id="safe">
+    <div class="section-head">
+      <h1 class="section-title">Is it safe?</h1>
+      <p class="section-sub">Short version: this site can't move your money. Long version below, because "trust me bro" is how people get drained.</p>
+    </div>
+
+    <div class="prose">
+
+      <h2>What this site does with your wallet</h2>
+      <p>Two things, and only two.</p>
+      <p><strong>Check your bag</strong> reads. You connect, it takes your public address, it asks the blockchain what that address holds, it prints the number. It never asks you to sign anything, and connecting a wallet doesn't let a site spend anything — that needs a signature, every time. If you'd rather not connect at all, paste your address in the box instead. That touches no wallet whatsoever.</p>
+      <p><strong>The Buy box</strong> signs. It has to — that's what a swap is. It's Jupiter's widget, the same one on jup.ag, and it doesn't load at all until you press the button. Your wallet shows you the transaction before anything happens. Read it.</p>
+      <p>Everything else — the burn tracker, the price, the stats — is read-only and doesn't care whether you have a wallet.</p>
+
+      <h2>Telling a real swap from a drainer</h2>
+      <p>This is the useful bit, and it's worth thirty seconds even if you never touch $CUNA.</p>
+      <p><strong>A real swap</strong> shows up in your wallet as a transaction: SOL leaving, $CUNA arriving, amounts matching what you typed. That's the whole thing.</p>
+      <p><strong>A drainer</strong> looks like one of these:</p>
+      <ul>
+        <li>It asks you to sign a <em>message</em> rather than approve a transaction.</li>
+        <li>It's worded "verify", "authenticate", "validate", "claim", "migrate" or "unlock".</li>
+        <li>It's a transaction where nothing comes back to you.</li>
+        <li>It's a token approval you didn't ask for.</li>
+      </ul>
+      <p>Reject it and close the tab. There is no $CUNA airdrop, no claim, no migration, no snapshot, and nobody from here will DM you first. Anyone who does is not us.</p>
+
+      <h2>Why Jupiter says "not verified"</h2>
+      <p>Because it's true, and we're not going to hide it. $CUNA isn't on Jupiter's verified token list — almost no new coin is; it's a listing process, not a safety rating. Two things you can check yourself and that actually matter: mint authority is revoked, so nobody can print more, and freeze authority is revoked, so nobody can freeze your tokens.</p>
+
+      <h2>There is only one $CUNA</h2>
+      <p>Anyone can mint a token and call it CUNA. Ours is:</p>
+      <p><code class="ca-value" data-field="mint">4yro2xbCxMFVvygCsj5FZMgZnVCb8EqcbPGTbSGCgDBc</code></p>
+      <p>The Buy box on this site is locked to that mint — you can change what you pay with, but you can't accidentally buy someone else's coin through here. Anywhere else, check the address yourself.</p>
+
+      <h2>The pool is small, and that costs you</h2>
+      <p>All of $CUNA's liquidity is one Orca pool. That means a big buy moves the price against you, and you pay it again on the way out. The buy page shows you the live number for the size you're actually trading, because Jupiter's widget doesn't.</p>
+      <p>This isn't advice about whether to buy. It's the number, so you can pick your size knowing what it costs.</p>
+
+      <h2>The site itself</h2>
+      <p>It's static files. No backend, no database, no accounts, no analytics, no cookies. Nothing about you is stored anywhere, because there's nowhere to store it. The code is public — go read it.</p>
+      <p>The one piece of third-party code is Jupiter's swap widget, loaded from jup.ag, and only after you press the button that says so.</p>
+
+      <p class="prose-back"><a href="buy.html">← Back to the buy page</a> &nbsp;·&nbsp; <a href="index.html">Main page</a></p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <img src="assets/logo.jpg" alt="" width="64" height="64" class="footer-mark">
+  <p class="footer-line">Not financial advice. Just degenerate advice.</p>
+  <p class="footer-fine">$CUNA is a meme coin with no utility, no roadmap and no promises. Buy it because it made you laugh, not because you expect anything from it. Live figures come from public APIs and can be wrong, stale, or briefly hilarious.</p>
+  <p class="footer-fine"><a href="index.html">← Back to the main page</a></p>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
