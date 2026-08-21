@@ -1,0 +1,4 @@
+# Railway builds this repo as a static site: Caddy serves the files as-is.
+# There is no build step and no server code — index.html at the repo root
+# is the whole app.
+providers = ["staticfile"]
