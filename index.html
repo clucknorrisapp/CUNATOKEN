@@ -91,6 +91,7 @@
       <div class="coin-wrap">
         <img class="coin" src="assets/logo.jpg" width="768" height="768"
              alt="The CUNALINGUS coin: glossy pink lips with a tongue out, next to a winking pink taco.">
+        <p class="coin-sticker">CUNA cummin' for ya <span aria-hidden="true">💦</span></p>
       </div>
     </div>
   </section>
@@ -99,8 +100,8 @@
   <div class="marquee-clip" aria-hidden="true">
     <div class="marquee">
       <div class="marquee-track">
-        <span>LICK THE CHARTS ✦ EAT THE BAGS ✦ NEVER COME UP FOR AIR ✦ GONNA EAT THAT CHART ✦ DIAMOND TONGUES ✦ ZERO GAG REFLEX ✦&nbsp;</span>
-        <span>LICK THE CHARTS ✦ EAT THE BAGS ✦ NEVER COME UP FOR AIR ✦ GONNA EAT THAT CHART ✦ DIAMOND TONGUES ✦ ZERO GAG REFLEX ✦&nbsp;</span>
+        <span>LICK THE CHARTS ✦ EAT THE BAGS ✦ NEVER COME UP FOR AIR ✦ CUNA CUMMIN' FOR YA 💦 ✦ GONNA EAT THAT CHART ✦ DIAMOND TONGUES ✦ ZERO GAG REFLEX ✦&nbsp;</span>
+        <span>LICK THE CHARTS ✦ EAT THE BAGS ✦ NEVER COME UP FOR AIR ✦ CUNA CUMMIN' FOR YA 💦 ✦ GONNA EAT THAT CHART ✦ DIAMOND TONGUES ✦ ZERO GAG REFLEX ✦&nbsp;</span>
       </div>
     </div>
   </div>
@@ -139,6 +140,26 @@
         <span>Goal · 6.9B</span>
       </div>
 
+      <div class="burn-send" data-burn-send hidden>
+        <div class="burn-send-head">
+          <span class="burn-label">Send to the burn wallet</span>
+          <p class="burn-send-copy">Want to burn some yourself without connecting anything? Send $CUNA here and it comes out of supply. This is a one-way trip — nothing sent here comes back.</p>
+        </div>
+        <div class="ca-row">
+          <code class="ca-value" data-field="burnWallet">—</code>
+          <button class="btn btn-copy" type="button" data-copy-burn>
+            <span data-copy-burn-text>Copy</span>
+          </button>
+        </div>
+        <div class="burn-send-stats">
+          <div class="mini">
+            <span class="mini-label">Waiting in the burn wallet</span>
+            <strong class="mini-value" data-field="burnWalletBalance">—</strong>
+          </div>
+        </div>
+        <p class="burn-send-warn"><strong>Only send $CUNA.</strong> Anything else sent to this address is gone for good, and nobody can get it back for you. Check the address character by character before you send — this page reads it from one place, but your clipboard is not the only thing on your computer.</p>
+      </div>
+
       <div class="burn-stats">
         <div class="mini">
           <span class="mini-label">Burned so far</span>
@@ -160,7 +181,7 @@
   <section class="section" id="bag">
     <div class="section-head">
       <h2 class="section-title">Check your bag</h2>
-      <p class="section-sub">Connect a Solana wallet to see how much $CUNA you're sitting on. Read-only — this page never asks you to sign anything.</p>
+      <p class="section-sub">See how much $CUNA you're sitting on. Connect a wallet read-only, or just paste an address — whichever you trust more.</p>
     </div>
 
     <div class="card bag-card">
@@ -168,6 +189,7 @@
         <span class="safety-icon" aria-hidden="true">🔒</span>
         <p>
           <strong>Read-only, always.</strong> Connecting shares your public wallet address with this page so it can look up your balance on-chain. It does not request a signature, a transaction, or a token approval, and it cannot move anything out of your wallet.
+          Prefer to keep your wallet out of it entirely? Paste an address instead — that route touches no wallet at all.
           <br><strong>If any site calling itself $CUNA asks you to sign, approve, or "verify" — close the tab.</strong> We will never ask.
         </p>
       </div>
@@ -177,15 +199,31 @@
           <span class="btn-emoji" aria-hidden="true">👛</span> Connect wallet
         </button>
         <div class="wallet-picker" data-wallet-picker hidden role="group" aria-label="Choose a wallet"></div>
+
+        <p class="bag-or"><span>or</span></p>
+
+        <form class="bag-lookup" data-bag-lookup>
+          <label class="bag-lookup-label" for="bag-address">Paste any Solana address — no wallet, no connection, nothing to approve</label>
+          <div class="bag-lookup-row">
+            <input class="bag-input" id="bag-address" name="address" type="text"
+                   placeholder="Wallet address…" data-bag-input
+                   autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+            <button class="btn btn-ghost" type="submit">
+              <span class="btn-emoji" aria-hidden="true">🔍</span> Check
+            </button>
+          </div>
+        </form>
       </div>
 
       <div class="bag-result" data-bag-result hidden>
         <div class="bag-head">
           <div>
-            <span class="bag-label">Connected</span>
+            <span class="bag-label" data-bag-source-label>Connected</span>
             <code class="bag-addr" data-field="walletAddr">—</code>
           </div>
-          <button class="btn btn-ghost btn-sm" type="button" data-disconnect>Disconnect</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-disconnect>
+            <span data-disconnect-text>Disconnect</span>
+          </button>
         </div>
 
         <div class="bag-grid">

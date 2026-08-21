@@ -32,7 +32,8 @@ closer to production.
 | --- | --- | --- |
 | Price, market cap, 24h change, volume, liquidity, txns | [DexScreener API](https://docs.dexscreener.com/api/reference) for the main Orca pool | CORS-open, keyless |
 | Circulating supply, burn progress | Solana JSON-RPC `getTokenSupply` | `solana-rpc.publicnode.com`, falling back to `api.mainnet-beta.solana.com` |
-| A connected wallet's $CUNA balance | Solana JSON-RPC `getTokenAccountsByOwner` | Same endpoints; read-only, see below |
+| A wallet's $CUNA balance (connected or pasted) | Solana JSON-RPC `getTokenAccountsByOwner` | Same endpoints; read-only, see below |
+| Balance waiting in the burn wallet | Solana JSON-RPC `getTokenAccountsByOwner` | Only when `burnWallet` is configured |
 
 Data refreshes every 30 seconds while the tab is visible. If both sources fail
 the page keeps its last values and says so instead of showing zeros.
@@ -43,8 +44,15 @@ inject markup.
 
 ## The wallet connect is read-only, and must stay that way
 
-The "Check your bag" section connects a Solana wallet purely to look up a
-balance. The **only** wallet methods `app.js` ever calls are `connect()` and
+"Check your bag" offers two routes to the same answer:
+
+1. **Connect a wallet** — read-only.
+2. **Paste an address** — touches no wallet at all. A public address goes into
+   a public RPC read. This is strictly safer than route 1 and is offered as a
+   first-class option, not a fallback, because plenty of people sensibly don't
+   want to connect a wallet to a memecoin site.
+
+The **only** wallet methods `app.js` ever calls are `connect()` and
 `disconnect()`. It never calls `signTransaction`, `signAllTransactions`,
 `signMessage` or `signAndSendTransaction`, and it never constructs a
 transaction — so connecting cannot move a visitor's funds, and the page has
@@ -83,6 +91,13 @@ Everything you'd want to change lives in the `CONFIG` block at the top of
   ```
   The whole Memes section (and its nav link) stays hidden while the array is
   empty, so an unfinished gallery never leaves a hole in the page.
+- **`burnWallet`** — the public address people can send $CUNA to in order to
+  take it out of supply. While it's `''` the entire "send to the burn wallet"
+  block stays hidden, and if it's set to something that isn't a valid base58
+  address the block also stays hidden and logs a warning. That's deliberate:
+  an absent feature is much better than a page telling people to send tokens
+  to a wrong address. When it is set, the block shows the address with a copy
+  button and the live balance sitting in it.
 - **`lockedApprox`** — amount locked in Jupiter locks. The percentage beside it
   is computed against live supply, so it stays honest as supply burns down.
 - **`launchSupply`** — a fixed launch-time constant (10B) used *only* to size

@@ -34,6 +34,12 @@
 
     refreshMs: 30000,
 
+    // Public burn wallet. People can send $CUNA here to take it out of supply
+    // without connecting anything. Leave it '' and the whole "send to the burn
+    // wallet" block stays hidden — better an absent feature than a wrong
+    // address on a page telling people to send tokens to it.
+    burnWallet: '',
+
     // Community links. Leave a value empty ('') and its button is not rendered.
     socials: {
       telegram: 'https://t.me/cunaonsol',
@@ -49,6 +55,10 @@
   CONFIG.buyUrl = 'https://jup.ag/tokens/' + CONFIG.mint;
   CONFIG.chartUrl = 'https://dexscreener.com/' + CONFIG.chain + '/' + CONFIG.mint;
   CONFIG.explorerUrl = 'https://solscan.io/token/' + CONFIG.mint;
+
+  // Solana addresses are base58 (no 0, O, I or l) and 32-44 characters.
+  // Nothing that fails this goes into an RPC call or onto the page.
+  var BASE58_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
   // ──────────────────────────────────────────────────────────
   // Tiny DOM helpers. Text is ALWAYS set via textContent, never
@@ -266,6 +276,7 @@
       // Price and supply just moved, so a connected bag is now worth
       // something slightly different.
       refreshBag();
+      refreshBurnWallet();
     }).catch(function (err) {
       failures += 1;
       note(failures > 1
@@ -315,13 +326,16 @@
     });
   }
 
-  function wireCopy() {
-    var btn = $('[data-copy-mint]');
+  function wireCopyButton(btnSel, labelSel, getValue) {
+    var btn = $(btnSel);
     if (!btn) return;
-    var label = $('[data-copy-text]', btn);
+    var label = $(labelSel, btn);
     var timer = null;
 
     btn.addEventListener('click', function () {
+      var value = getValue();
+      if (!value) return;
+
       var done = function (ok) {
         if (label) label.textContent = ok ? 'Copied!' : 'Select it';
         btn.classList.toggle('is-done', ok);
@@ -333,11 +347,39 @@
       };
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(CONFIG.mint).then(function () { done(true); },
+        navigator.clipboard.writeText(value).then(function () { done(true); },
           function () { done(false); });
       } else {
         done(false);
       }
+    });
+  }
+
+  function wireCopy() {
+    wireCopyButton('[data-copy-mint]', '[data-copy-text]', function () { return CONFIG.mint; });
+    wireCopyButton('[data-copy-burn]', '[data-copy-burn-text]', function () { return CONFIG.burnWallet; });
+  }
+
+  // The burn wallet block only exists once there is a real address to show.
+  function buildBurnWallet() {
+    var block = $('[data-burn-send]');
+    if (!block) return;
+    if (!CONFIG.burnWallet || !BASE58_ADDRESS.test(CONFIG.burnWallet)) {
+      if (CONFIG.burnWallet && window.console && console.warn) {
+        console.warn('[CUNA] burnWallet is set but is not a valid Solana address — block hidden.');
+      }
+      return;
+    }
+    setField('burnWallet', CONFIG.burnWallet);
+    block.hidden = false;
+  }
+
+  function refreshBurnWallet() {
+    if (!CONFIG.burnWallet || !BASE58_ADDRESS.test(CONFIG.burnWallet)) return Promise.resolve();
+    return fetchBag(CONFIG.burnWallet).then(function (amount) {
+      setField('burnWalletBalance', fmtInt(amount) + ' $CUNA');
+    }).catch(function () {
+      setField('burnWalletBalance', '—');
     });
   }
 
@@ -373,29 +415,39 @@
   }
 
   // ──────────────────────────────────────────────────────────
-  // Wallet: READ-ONLY, and it stays that way.
+  // "Check your bag" — two routes to the same read-only answer.
   //
-  // The only wallet method this file ever calls is connect() (plus
-  // disconnect()). It never calls signTransaction, signAllTransactions,
-  // signMessage, or signAndSendTransaction, and it never builds a
-  // transaction — so connecting cannot move a user's funds. The balance is
-  // read from a public RPC using nothing but the public address the wallet
-  // hands back. Keep it that way: if a future change needs a signature,
-  // that is a different feature with a different threat model.
+  //   1. Connect a wallet. The ONLY wallet methods this file ever calls are
+  //      connect() and disconnect(). It never calls signTransaction,
+  //      signAllTransactions, signMessage or signAndSendTransaction, and it
+  //      never builds a transaction — so connecting cannot move a visitor's
+  //      funds.
+  //   2. Paste an address. This touches no wallet at all: it is a public
+  //      address going into a public RPC read. Strictly safer than route 1,
+  //      and offered first-class for people who would rather not connect.
+  //
+  // Keep it that way. If a future change needs a signature, that is a
+  // different feature with a different threat model — the page promises
+  // visitors in writing that we will never ask them to sign.
   // ──────────────────────────────────────────────────────────
 
-  // Solana addresses are base58 and 32-44 chars. Anything else is not
-  // something we hand to an RPC or print on the page.
-  var BASE58_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  // source is 'wallet' or 'address' — it decides the panel's wording.
+  var view = { source: '', provider: null, name: '', address: '' };
 
-  var wallet = { provider: null, name: '', address: '' };
+  // Guards against a slow in-flight balance response painting into a panel
+  // that has since been cleared or pointed at a different address.
+  var bagSeq = 0;
 
   var els = {
     connectWrap: $('[data-bag-connect]'),
     connectBtn: $('[data-connect]'),
     picker: $('[data-wallet-picker]'),
+    lookupForm: $('[data-bag-lookup]'),
+    lookupInput: $('[data-bag-input]'),
     result: $('[data-bag-result]'),
     disconnectBtn: $('[data-disconnect]'),
+    disconnectText: $('[data-disconnect-text]'),
+    sourceLabel: $('[data-bag-source-label]'),
     msg: $('[data-bag-msg]')
   };
 
@@ -406,7 +458,7 @@
   }
 
   // Injected providers, in the order we'd rather find them. Detection is
-  // read-only: we look, we never call anything here.
+  // read-only: we look at window, we never call anything here.
   function detectWallets() {
     var w = window;
     var found = [];
@@ -451,7 +503,7 @@
     return 'Tastebud';
   }
 
-  // Sums every $CUNA token account the address owns.
+  // Sums every $CUNA token account an address owns.
   function fetchBag(address) {
     return rpc('getTokenAccountsByOwner', [
       address,
@@ -480,30 +532,44 @@
       ? (amount / state.supply) * 100
       : null;
     setField('bagShare', isNum(share)
-      ? (share >= 0.01 ? share.toFixed(3) + '%' : '<0.01%')
+      ? (share <= 0 ? '0%' : share >= 0.01 ? share.toFixed(3) + '%' : '<0.01%')
       : '—');
     setField('bagRank', rankFor(amount, share));
   }
 
   function refreshBag() {
-    if (!wallet.address) return Promise.resolve();
-    return fetchBag(wallet.address).then(renderBag).catch(function (err) {
-      bagMsg('Could not read your balance from the chain right now. Try again in a moment.', true);
+    if (!view.address) return Promise.resolve();
+
+    var seq = ++bagSeq;
+    var addr = view.address;
+
+    return fetchBag(addr).then(function (amount) {
+      // A newer lookup started, or the panel was cleared, while this was in
+      // flight — drop the result rather than paint a stale balance.
+      if (seq !== bagSeq || view.address !== addr) return;
+      renderBag(amount);
+    }).catch(function (err) {
+      if (seq !== bagSeq || view.address !== addr) return;
+      bagMsg('Could not read that balance from the chain right now. Try again in a moment.', true);
       if (window.console && console.warn) console.warn('[CUNA]', err);
     });
   }
 
-  function showConnected() {
-    setField('walletAddr', shortAddress(wallet.address));
+  function showBag(message) {
+    var byWallet = view.source === 'wallet';
+    setField('walletAddr', shortAddress(view.address));
+    if (els.sourceLabel) els.sourceLabel.textContent = byWallet ? 'Connected' : 'Looking at';
+    if (els.disconnectText) els.disconnectText.textContent = byWallet ? 'Disconnect' : 'Clear';
     if (els.connectWrap) els.connectWrap.hidden = true;
     if (els.result) els.result.hidden = false;
     if (els.picker) els.picker.hidden = true;
-    bagMsg('Connected to ' + wallet.name + '. Read-only — nothing was signed.');
+    bagMsg(message);
     refreshBag();
   }
 
-  function resetWallet(message) {
-    wallet = { provider: null, name: '', address: '' };
+  function clearBag(message) {
+    view = { source: '', provider: null, name: '', address: '' };
+    bagSeq += 1; // orphan anything still in flight
     if (els.connectWrap) els.connectWrap.hidden = false;
     if (els.result) els.result.hidden = true;
     if (els.picker) els.picker.hidden = true;
@@ -515,15 +581,18 @@
 
   function attachProviderEvents(provider) {
     if (!provider || typeof provider.on !== 'function') return;
+
     provider.on('disconnect', function () {
-      resetWallet('Wallet disconnected.');
+      if (view.source === 'wallet') clearBag('Wallet disconnected.');
     });
+
     provider.on('accountChanged', function (publicKey) {
-      if (!publicKey) { resetWallet('Wallet disconnected.'); return; }
+      if (view.source !== 'wallet') return;
+      if (!publicKey) { clearBag('Wallet disconnected.'); return; }
       var addr = readAddress(provider, { publicKey: publicKey });
-      if (!addr) { resetWallet('Wallet switched to an account this page could not read.'); return; }
-      wallet.address = addr;
-      showConnected();
+      if (!addr) { clearBag('Wallet switched to an account this page could not read.'); return; }
+      view.address = addr;
+      showBag('Switched to ' + shortAddress(addr) + '.');
     });
   }
 
@@ -537,10 +606,19 @@
     return Promise.resolve(attempt).then(function (res) {
       var addr = readAddress(provider, res);
       if (!addr) throw new Error('Wallet returned an unreadable address');
-      wallet = { provider: provider, name: entry.name, address: addr };
+      view = { source: 'wallet', provider: provider, name: entry.name, address: addr };
       attachProviderEvents(provider);
-      showConnected();
+      showBag('Connected to ' + entry.name + '. Read-only — nothing was signed.');
     });
+  }
+
+  function describeConnectError(err) {
+    var code = err && err.code;
+    var text = (err && err.message) || '';
+    if (code === 4001 || /reject|denied|cancel/i.test(text)) {
+      return 'Connection cancelled. No hard feelings.';
+    }
+    return 'Could not connect to that wallet. Nothing was signed — try again.';
   }
 
   function buildPicker(wallets) {
@@ -562,43 +640,58 @@
     els.picker.hidden = false;
   }
 
-  function describeConnectError(err) {
-    var code = err && err.code;
-    var text = (err && err.message) || '';
-    if (code === 4001 || /reject|denied|cancel/i.test(text)) {
-      return 'Connection cancelled. No hard feelings.';
+  function lookupByAddress(raw) {
+    var addr = String(raw || '').trim();
+
+    if (!addr) {
+      bagMsg('Paste a Solana wallet address first.', true);
+      return;
     }
-    return 'Could not connect to that wallet. Nothing was signed — try again.';
+    if (!BASE58_ADDRESS.test(addr)) {
+      bagMsg("That doesn't look like a Solana address. They're 32–44 characters, no 0, O, I or l.", true);
+      return;
+    }
+
+    view = { source: 'address', provider: null, name: '', address: addr };
+    showBag('Reading the chain for ' + shortAddress(addr) + '. No wallet involved.');
   }
 
-  function wireWallet() {
-    if (!els.connectBtn) return;
+  function wireBag() {
+    if (els.connectBtn) {
+      els.connectBtn.addEventListener('click', function () {
+        var wallets = detectWallets();
 
-    els.connectBtn.addEventListener('click', function () {
-      var wallets = detectWallets();
+        if (!wallets.length) {
+          bagMsg('No Solana wallet found in this browser. Install one (Phantom, Solflare and Backpack all work) and reload — or just paste your address below instead.', true);
+          return;
+        }
+        if (wallets.length === 1) {
+          bagMsg('Waiting for ' + wallets[0].name + '…');
+          connectTo(wallets[0], false).catch(function (err) {
+            bagMsg(describeConnectError(err), true);
+          });
+          return;
+        }
+        bagMsg('Pick a wallet:');
+        buildPicker(wallets);
+      });
+    }
 
-      if (!wallets.length) {
-        bagMsg('No Solana wallet found in this browser. Install one (Phantom, Solflare and Backpack all work), then reload this page.', true);
-        return;
-      }
-      if (wallets.length === 1) {
-        bagMsg('Waiting for ' + wallets[0].name + '…');
-        connectTo(wallets[0], false).catch(function (err) {
-          bagMsg(describeConnectError(err), true);
-        });
-        return;
-      }
-      bagMsg('Pick a wallet:');
-      buildPicker(wallets);
-    });
+    if (els.lookupForm) {
+      els.lookupForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        lookupByAddress(els.lookupInput && els.lookupInput.value);
+      });
+    }
 
     if (els.disconnectBtn) {
       els.disconnectBtn.addEventListener('click', function () {
-        var provider = wallet.provider;
+        var provider = view.source === 'wallet' ? view.provider : null;
         if (provider && typeof provider.disconnect === 'function') {
           try { provider.disconnect(); } catch (e) { /* wallet already gone */ }
         }
-        resetWallet('Disconnected.');
+        clearBag(provider ? 'Disconnected.' : '');
+        if (els.lookupInput) els.lookupInput.value = '';
       });
     }
 
@@ -617,7 +710,8 @@
   buildLinks();
   wireCopy();
   buildMemes();
-  wireWallet();
+  buildBurnWallet();
+  wireBag();
   refresh();
 
   setInterval(function () {
