@@ -24,9 +24,12 @@
     burnGoal: 6900000000,
     launchSupply: 13659767778.871345,
 
-    // Approximate amount locked in Jupiter locks. Update if the locks change.
-    // The percentage shown next to it is computed against live supply.
-    lockedApprox: 7000000000,
+    // Amount locked in Jupiter locks. Measured on 2026-08-21 by summing every
+    // $CUNA token account owned by a PDA of the Jupiter Lock program
+    // (LocpQgucEQHbqNABEYvBvwoxCPsSbG91A1QaQhQQqjn) — 29 accounts, exactly
+    // this total. Re-measure if the locks change; the percentage shown beside
+    // it is computed against live supply, so it stays honest as supply burns.
+    lockedApprox: 7004310000,
 
     // Public RPCs, tried in order. Both are CORS-open and keyless.
     rpcEndpoints: [
