@@ -36,8 +36,8 @@
 
     // Community links. Leave a value empty ('') and its button is not rendered.
     socials: {
-      telegram: '',
-      x: ''
+      telegram: 'https://t.me/cunaonsol',
+      x: 'https://x.com/cunatoken'
     },
 
     // Meme gallery. Drop files in assets/memes/ and list them here.
