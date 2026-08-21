@@ -108,6 +108,9 @@
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var lastValues = {};
 
+  // Latest good readings, shared with the wallet panel.
+  var state = { price: null, supply: null };
+
   function animateField(name, value, formatter) {
     if (!isNum(value)) { setField(name, '—'); return; }
     var from = isNum(lastValues[name]) ? lastValues[name] : value * 0.985;
@@ -154,6 +157,7 @@
     var volume = pair.volume ? toNum(pair.volume.h24) : null;
     var liq = pair.liquidity ? toNum(pair.liquidity.usd) : null;
 
+    state.price = price;
     setField('price', fmtUsd(price));
     setField('fdv', fmtUsd(mcap));
     setField('volume24', fmtUsd(volume));
@@ -171,42 +175,45 @@
   // ──────────────────────────────────────────────────────────
   // Data: live token supply straight off a public Solana RPC
   // ──────────────────────────────────────────────────────────
-  function rpcSupply(endpoint) {
+  function rpcOnce(endpoint, method, params) {
     return fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store',
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'getTokenSupply',
-        params: [CONFIG.mint]
-      })
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: params })
     })
       .then(function (res) {
         if (!res.ok) throw new Error('RPC responded ' + res.status);
         return res.json();
       })
       .then(function (data) {
-        if (data && data.error) throw new Error('RPC error');
-        var v = data && data.result && data.result.value;
-        var amount = v && (v.uiAmountString || v.uiAmount);
-        var n = toNum(amount);
-        if (n === null || n <= 0) throw new Error('Bad supply payload');
-        return n;
+        if (data && data.error) throw new Error('RPC error on ' + method);
+        return data && data.result;
       });
   }
 
-  function fetchSupply() {
+  // Walks the endpoint list until one answers, so a single rate-limited
+  // public RPC doesn't take the page down.
+  function rpc(method, params) {
     var endpoints = CONFIG.rpcEndpoints.slice();
     function attempt() {
       if (!endpoints.length) return Promise.reject(new Error('All RPCs failed'));
-      return rpcSupply(endpoints.shift()).catch(attempt);
+      return rpcOnce(endpoints.shift(), method, params).catch(attempt);
     }
     return attempt();
   }
 
+  function fetchSupply() {
+    return rpc('getTokenSupply', [CONFIG.mint]).then(function (result) {
+      var v = result && result.value;
+      var n = toNum(v && (v.uiAmountString || v.uiAmount));
+      if (n === null || n <= 0) throw new Error('Bad supply payload');
+      return n;
+    });
+  }
+
   function renderSupply(supply) {
+    state.supply = supply;
     animateField('supply', supply, fmtInt);
 
     var burned = Math.max(CONFIG.launchSupply - supply, 0);
@@ -256,6 +263,9 @@
     ]).then(function () {
       failures = 0;
       timeNote();
+      // Price and supply just moved, so a connected bag is now worth
+      // something slightly different.
+      refreshBag();
     }).catch(function (err) {
       failures += 1;
       note(failures > 1
@@ -363,12 +373,251 @@
   }
 
   // ──────────────────────────────────────────────────────────
+  // Wallet: READ-ONLY, and it stays that way.
+  //
+  // The only wallet method this file ever calls is connect() (plus
+  // disconnect()). It never calls signTransaction, signAllTransactions,
+  // signMessage, or signAndSendTransaction, and it never builds a
+  // transaction — so connecting cannot move a user's funds. The balance is
+  // read from a public RPC using nothing but the public address the wallet
+  // hands back. Keep it that way: if a future change needs a signature,
+  // that is a different feature with a different threat model.
+  // ──────────────────────────────────────────────────────────
+
+  // Solana addresses are base58 and 32-44 chars. Anything else is not
+  // something we hand to an RPC or print on the page.
+  var BASE58_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+  var wallet = { provider: null, name: '', address: '' };
+
+  var els = {
+    connectWrap: $('[data-bag-connect]'),
+    connectBtn: $('[data-connect]'),
+    picker: $('[data-wallet-picker]'),
+    result: $('[data-bag-result]'),
+    disconnectBtn: $('[data-disconnect]'),
+    msg: $('[data-bag-msg]')
+  };
+
+  function bagMsg(text, isError) {
+    if (!els.msg) return;
+    els.msg.textContent = text || '';
+    els.msg.classList.toggle('is-error', !!isError);
+  }
+
+  // Injected providers, in the order we'd rather find them. Detection is
+  // read-only: we look, we never call anything here.
+  function detectWallets() {
+    var w = window;
+    var found = [];
+    var seen = [];
+
+    function add(name, provider) {
+      if (!provider || typeof provider.connect !== 'function') return;
+      if (seen.indexOf(provider) !== -1) return;
+      seen.push(provider);
+      found.push({ name: name, provider: provider });
+    }
+
+    add('Phantom', w.phantom && w.phantom.solana);
+    add('Solflare', w.solflare && w.solflare.isSolflare ? w.solflare : null);
+    add('Backpack', w.backpack && w.backpack.isBackpack ? w.backpack : null);
+    add('Glow', w.glow && w.glow.solana);
+
+    if (w.solana) {
+      if (w.solana.isPhantom) add('Phantom', w.solana);
+      else if (w.solana.isSolflare) add('Solflare', w.solana);
+      else add('Solana wallet', w.solana);
+    }
+    return found;
+  }
+
+  function readAddress(provider, connectResult) {
+    var key = (connectResult && connectResult.publicKey) || provider.publicKey;
+    if (!key) return '';
+    var addr = typeof key.toString === 'function' ? key.toString() : String(key);
+    return BASE58_ADDRESS.test(addr) ? addr : '';
+  }
+
+  function shortAddress(addr) {
+    return addr.slice(0, 4) + '…' + addr.slice(-4);
+  }
+
+  function rankFor(amount, share) {
+    if (!isNum(amount) || amount <= 0) return 'Dry mouth — no $CUNA in here';
+    if (isNum(share) && share >= 1) return 'Tongue Overlord';
+    if (isNum(share) && share >= 0.1) return 'Diamond Tongue';
+    if (isNum(share) && share >= 0.01) return 'Certified Tongue Holder';
+    return 'Tastebud';
+  }
+
+  // Sums every $CUNA token account the address owns.
+  function fetchBag(address) {
+    return rpc('getTokenAccountsByOwner', [
+      address,
+      { mint: CONFIG.mint },
+      { encoding: 'jsonParsed' }
+    ]).then(function (result) {
+      var accounts = (result && result.value) || [];
+      var total = 0;
+      accounts.forEach(function (entry) {
+        var info = entry && entry.account && entry.account.data &&
+          entry.account.data.parsed && entry.account.data.parsed.info;
+        var amount = info && info.tokenAmount &&
+          (info.tokenAmount.uiAmountString || info.tokenAmount.uiAmount);
+        var n = toNum(amount);
+        if (n !== null && n > 0) total += n;
+      });
+      return total;
+    });
+  }
+
+  function renderBag(amount) {
+    setField('bagAmount', fmtInt(amount));
+    setField('bagUsd', isNum(state.price) ? fmtUsd(amount * state.price) : '—');
+
+    var share = isNum(state.supply) && state.supply > 0
+      ? (amount / state.supply) * 100
+      : null;
+    setField('bagShare', isNum(share)
+      ? (share >= 0.01 ? share.toFixed(3) + '%' : '<0.01%')
+      : '—');
+    setField('bagRank', rankFor(amount, share));
+  }
+
+  function refreshBag() {
+    if (!wallet.address) return Promise.resolve();
+    return fetchBag(wallet.address).then(renderBag).catch(function (err) {
+      bagMsg('Could not read your balance from the chain right now. Try again in a moment.', true);
+      if (window.console && console.warn) console.warn('[CUNA]', err);
+    });
+  }
+
+  function showConnected() {
+    setField('walletAddr', shortAddress(wallet.address));
+    if (els.connectWrap) els.connectWrap.hidden = true;
+    if (els.result) els.result.hidden = false;
+    if (els.picker) els.picker.hidden = true;
+    bagMsg('Connected to ' + wallet.name + '. Read-only — nothing was signed.');
+    refreshBag();
+  }
+
+  function resetWallet(message) {
+    wallet = { provider: null, name: '', address: '' };
+    if (els.connectWrap) els.connectWrap.hidden = false;
+    if (els.result) els.result.hidden = true;
+    if (els.picker) els.picker.hidden = true;
+    ['bagAmount', 'bagUsd', 'bagShare', 'bagRank', 'walletAddr'].forEach(function (f) {
+      setField(f, '—');
+    });
+    bagMsg(message || '');
+  }
+
+  function attachProviderEvents(provider) {
+    if (!provider || typeof provider.on !== 'function') return;
+    provider.on('disconnect', function () {
+      resetWallet('Wallet disconnected.');
+    });
+    provider.on('accountChanged', function (publicKey) {
+      if (!publicKey) { resetWallet('Wallet disconnected.'); return; }
+      var addr = readAddress(provider, { publicKey: publicKey });
+      if (!addr) { resetWallet('Wallet switched to an account this page could not read.'); return; }
+      wallet.address = addr;
+      showConnected();
+    });
+  }
+
+  function connectTo(entry, silent) {
+    var provider = entry.provider;
+    // connect() is the whole surface. Nothing else is ever called.
+    var attempt = silent
+      ? provider.connect({ onlyIfTrusted: true })
+      : provider.connect();
+
+    return Promise.resolve(attempt).then(function (res) {
+      var addr = readAddress(provider, res);
+      if (!addr) throw new Error('Wallet returned an unreadable address');
+      wallet = { provider: provider, name: entry.name, address: addr };
+      attachProviderEvents(provider);
+      showConnected();
+    });
+  }
+
+  function buildPicker(wallets) {
+    if (!els.picker) return;
+    els.picker.textContent = '';
+    wallets.forEach(function (entry) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-ghost';
+      btn.textContent = entry.name;
+      btn.addEventListener('click', function () {
+        bagMsg('Waiting for ' + entry.name + '…');
+        connectTo(entry, false).catch(function (err) {
+          bagMsg(describeConnectError(err), true);
+        });
+      });
+      els.picker.appendChild(btn);
+    });
+    els.picker.hidden = false;
+  }
+
+  function describeConnectError(err) {
+    var code = err && err.code;
+    var text = (err && err.message) || '';
+    if (code === 4001 || /reject|denied|cancel/i.test(text)) {
+      return 'Connection cancelled. No hard feelings.';
+    }
+    return 'Could not connect to that wallet. Nothing was signed — try again.';
+  }
+
+  function wireWallet() {
+    if (!els.connectBtn) return;
+
+    els.connectBtn.addEventListener('click', function () {
+      var wallets = detectWallets();
+
+      if (!wallets.length) {
+        bagMsg('No Solana wallet found in this browser. Install one (Phantom, Solflare and Backpack all work), then reload this page.', true);
+        return;
+      }
+      if (wallets.length === 1) {
+        bagMsg('Waiting for ' + wallets[0].name + '…');
+        connectTo(wallets[0], false).catch(function (err) {
+          bagMsg(describeConnectError(err), true);
+        });
+        return;
+      }
+      bagMsg('Pick a wallet:');
+      buildPicker(wallets);
+    });
+
+    if (els.disconnectBtn) {
+      els.disconnectBtn.addEventListener('click', function () {
+        var provider = wallet.provider;
+        if (provider && typeof provider.disconnect === 'function') {
+          try { provider.disconnect(); } catch (e) { /* wallet already gone */ }
+        }
+        resetWallet('Disconnected.');
+      });
+    }
+
+    // If this browser already trusts the site, reconnect without a popup.
+    // Wallets that don't support onlyIfTrusted just reject; we stay quiet.
+    var known = detectWallets();
+    if (known.length) {
+      connectTo(known[0], true).catch(function () { /* not trusted yet */ });
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
   // Go
   // ──────────────────────────────────────────────────────────
   wireLinks();
   buildLinks();
   wireCopy();
   buildMemes();
+  wireWallet();
   refresh();
 
   setInterval(function () {

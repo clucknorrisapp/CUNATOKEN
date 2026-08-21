@@ -32,6 +32,7 @@ closer to production.
 | --- | --- | --- |
 | Price, market cap, 24h change, volume, liquidity, txns | [DexScreener API](https://docs.dexscreener.com/api/reference) for the main Orca pool | CORS-open, keyless |
 | Circulating supply, burn progress | Solana JSON-RPC `getTokenSupply` | `solana-rpc.publicnode.com`, falling back to `api.mainnet-beta.solana.com` |
+| A connected wallet's $CUNA balance | Solana JSON-RPC `getTokenAccountsByOwner` | Same endpoints; read-only, see below |
 
 Data refreshes every 30 seconds while the tab is visible. If both sources fail
 the page keeps its last values and says so instead of showing zeros.
@@ -39,6 +40,32 @@ the page keeps its last values and says so instead of showing zeros.
 Nothing fetched from an API is ever inserted as HTML — every value goes through
 `textContent` after being coerced to a number, so a hostile API response can't
 inject markup.
+
+## The wallet connect is read-only, and must stay that way
+
+The "Check your bag" section connects a Solana wallet purely to look up a
+balance. The **only** wallet methods `app.js` ever calls are `connect()` and
+`disconnect()`. It never calls `signTransaction`, `signAllTransactions`,
+`signMessage` or `signAndSendTransaction`, and it never constructs a
+transaction — so connecting cannot move a visitor's funds, and the page has
+nothing to steal.
+
+How it works:
+
+1. Detect injected providers (Phantom, Solflare, Backpack, Glow). Detection
+   only reads `window` — it calls nothing.
+2. `connect()` returns a public address. That address is checked against a
+   base58 pattern before it is used or displayed.
+3. The balance comes from a public RPC `getTokenAccountsByOwner` filtered to
+   the $CUNA mint, summed across the owner's token accounts.
+4. On load the page tries `connect({ onlyIfTrusted: true })`, which
+   reconnects silently for visitors who already approved the site and does
+   nothing at all for everyone else. No popup is ever triggered unprompted.
+
+If someone later wants a feature that needs a signature, treat it as a new
+feature with a completely different threat model — don't quietly widen this
+one. The safety copy on the page tells visitors we will never ask them to
+sign, and that promise is only worth anything if the code keeps it.
 
 ## Editing the site
 

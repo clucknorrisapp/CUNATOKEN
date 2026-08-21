@@ -42,6 +42,7 @@
   </a>
   <nav class="nav-links" aria-label="Sections">
     <a href="#burn">Burn</a>
+    <a href="#bag">Your bag</a>
     <a href="#stats">Stats</a>
     <a href="#lore">Lore</a>
     <a href="#memes" data-memes-nav hidden>Memes</a>
@@ -152,6 +153,60 @@
           <strong class="mini-value" data-field="locked">—</strong>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── YOUR BAG (read-only wallet) ───────────────────────── -->
+  <section class="section" id="bag">
+    <div class="section-head">
+      <h2 class="section-title">Check your bag</h2>
+      <p class="section-sub">Connect a Solana wallet to see how much $CUNA you're sitting on. Read-only — this page never asks you to sign anything.</p>
+    </div>
+
+    <div class="card bag-card">
+      <div class="safety">
+        <span class="safety-icon" aria-hidden="true">🔒</span>
+        <p>
+          <strong>Read-only, always.</strong> Connecting shares your public wallet address with this page so it can look up your balance on-chain. It does not request a signature, a transaction, or a token approval, and it cannot move anything out of your wallet.
+          <br><strong>If any site calling itself $CUNA asks you to sign, approve, or "verify" — close the tab.</strong> We will never ask.
+        </p>
+      </div>
+
+      <div class="bag-connect" data-bag-connect>
+        <button class="btn btn-buy" type="button" data-connect>
+          <span class="btn-emoji" aria-hidden="true">👛</span> Connect wallet
+        </button>
+        <div class="wallet-picker" data-wallet-picker hidden role="group" aria-label="Choose a wallet"></div>
+      </div>
+
+      <div class="bag-result" data-bag-result hidden>
+        <div class="bag-head">
+          <div>
+            <span class="bag-label">Connected</span>
+            <code class="bag-addr" data-field="walletAddr">—</code>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" data-disconnect>Disconnect</button>
+        </div>
+
+        <div class="bag-grid">
+          <div class="mini">
+            <span class="mini-label">Your $CUNA</span>
+            <strong class="mini-value" data-field="bagAmount">—</strong>
+          </div>
+          <div class="mini">
+            <span class="mini-label">Worth right now</span>
+            <strong class="mini-value" data-field="bagUsd">—</strong>
+          </div>
+          <div class="mini">
+            <span class="mini-label">Share of supply</span>
+            <strong class="mini-value" data-field="bagShare">—</strong>
+          </div>
+        </div>
+
+        <p class="bag-rank">Standing: <strong data-field="bagRank">—</strong></p>
+      </div>
+
+      <p class="bag-msg" data-bag-msg role="status"></p>
     </div>
   </section>
 
