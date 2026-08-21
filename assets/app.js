@@ -39,6 +39,31 @@
 
     refreshMs: 30000,
 
+    // Jupiter Plugin — the swap widget. Notes for whoever touches this next:
+    //  * "Jupiter Terminal" (terminal.jup.ag/main-v2.js, main-v4.js) is the
+    //    retired predecessor. Its docs 301 to the Plugin page now. main-v2 in
+    //    particular has no Shadow DOM and leaks its Tailwind reset into the
+    //    host page, which would wreck this stylesheet.
+    //  * The option is fixedMint, SINGULAR. fixedOutputMint existed in the old
+    //    Terminal and is silently ignored here — copy an old snippet and users
+    //    get a wide-open token picker instead of a locked one.
+    //  * No RPC is passed or accepted; the plugin runs on Jupiter's own Ultra
+    //    API. Nothing here to rate-limit.
+    jupiter: {
+      script: 'https://plugin.jup.ag/plugin-v1.js',
+      targetId: 'jupiter-plugin',
+      quoteApi: 'https://lite-api.jup.ag/swap/v1/quote',
+      solMint: 'So11111111111111111111111111111111111111112',
+      logoUri: 'https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY',
+      // Opens at a size that fills close to the quoted price in this pool.
+      defaultLamports: '50000000', // 0.05 SOL
+      // Sizes shown in the up-front impact table, in SOL.
+      probeSizes: [0.05, 0.25, 1, 2],
+      warnPct: 3,
+      badPct: 10,
+      loadTimeoutMs: 12000
+    },
+
     // Public burn wallet. People can send $CUNA here to take it out of supply
     // without connecting anything. Leave it '' and the whole "send to the burn
     // wallet" block stays hidden — better an absent feature than a wrong
@@ -130,7 +155,7 @@
   var lastValues = {};
 
   // Latest good readings, shared with the wallet panel.
-  var state = { price: null, supply: null };
+  var state = { price: null, supply: null, solUsd: null };
 
   function animateField(name, value, formatter) {
     if (!isNum(value)) { setField(name, '—'); return; }
@@ -179,6 +204,10 @@
     var liq = pair.liquidity ? toNum(pair.liquidity.usd) : null;
 
     state.price = price;
+    // priceUsd / priceNative is the SOL price, so the impact table can show
+    // dollars without a second API call.
+    var native = toNum(pair.priceNative);
+    state.solUsd = (isNum(price) && isNum(native) && native > 0) ? price / native : null;
     setField('price', fmtUsd(price));
     setField('fdv', fmtUsd(mcap));
     setField('volume24', fmtUsd(volume));
@@ -290,6 +319,7 @@
       // something slightly different.
       refreshBag();
       refreshBurnWallet();
+      renderImpactTable();
     }).catch(function (err) {
       failures += 1;
       note(failures > 1
@@ -462,9 +492,9 @@
   //      address going into a public RPC read. Strictly safer than route 1,
   //      and offered first-class for people who would rather not connect.
   //
-  // Keep it that way. If a future change needs a signature, that is a
-  // different feature with a different threat model — the page promises
-  // visitors in writing that we will never ask them to sign.
+  // Keep it that way. This file never asks for a signature. The swap widget
+  // is a separate feature, with its own wallet connection, its own threat
+  // model and its own safety copy — it must not be wired into this one.
   // ──────────────────────────────────────────────────────────
 
   // source is 'wallet' or 'address' — it decides the panel's wording.
@@ -740,6 +770,236 @@
   }
 
   // ──────────────────────────────────────────────────────────
+  // Buy: Jupiter Plugin, loaded only when someone asks for it.
+  //
+  // This is the one feature on the page that leads to a signature, and the
+  // one place third-party code runs on this origin. Both facts are stated
+  // next to the button rather than buried, which is only honest if the
+  // script really is absent until the click — so the <script> tag is
+  // injected here, not written into index.html.
+  //
+  // Jupiter's widget shows dollar amounts but never a price-impact figure,
+  // and this pool is thin enough that the difference is the whole story. So
+  // the impact number is computed here from Jupiter's quote API and shown
+  // both up front and live as the amount changes.
+  // ──────────────────────────────────────────────────────────
+
+  var JUP = CONFIG.jupiter;
+  var jupState = { loading: false, loaded: false, failed: false };
+
+  function lamports(sol) {
+    return String(Math.round(sol * 1e9));
+  }
+
+  function quoteImpact(amountLamports) {
+    var url = JUP.quoteApi +
+      '?inputMint=' + encodeURIComponent(JUP.solMint) +
+      '&outputMint=' + encodeURIComponent(CONFIG.mint) +
+      '&amount=' + encodeURIComponent(amountLamports) +
+      '&slippageBps=150';
+
+    return fetch(url, { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('Quote responded ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        var pct = toNum(data && data.priceImpactPct);
+        if (pct === null) throw new Error('No priceImpactPct in quote');
+        return pct * 100;
+      });
+  }
+
+  function impactClass(pct) {
+    if (pct >= JUP.badPct) return 'impact-bad';
+    if (pct >= JUP.warnPct) return 'impact-warn';
+    return 'impact-ok';
+  }
+
+  function sizeLabel(sol) {
+    var usd = isNum(state.solUsd) ? ' · ' + fmtUsd(sol * state.solUsd) : '';
+    return sol + ' SOL' + usd;
+  }
+
+  function renderImpactTable() {
+    var list = $('[data-impact-list]');
+    if (!list) return Promise.resolve();
+
+    return Promise.all(JUP.probeSizes.map(function (sol) {
+      return quoteImpact(lamports(sol))
+        .then(function (pct) { return { sol: sol, pct: pct }; })
+        .catch(function () { return { sol: sol, pct: null }; });
+    })).then(function (rows) {
+      if (!rows.some(function (r) { return isNum(r.pct); })) {
+        list.textContent = '';
+        var li = document.createElement('li');
+        li.className = 'impact-loading';
+        li.textContent = 'Jupiter quotes are unreachable right now.';
+        list.appendChild(li);
+        return;
+      }
+
+      list.textContent = '';
+      rows.forEach(function (r) {
+        var li = document.createElement('li');
+
+        var size = document.createElement('span');
+        size.className = 'impact-size';
+        size.textContent = sizeLabel(r.sol);
+        li.appendChild(size);
+
+        var pct = document.createElement('span');
+        pct.className = 'impact-pct ' + (isNum(r.pct) ? impactClass(r.pct) : '');
+        pct.textContent = isNum(r.pct) ? '−' + r.pct.toFixed(2) + '%' : '—';
+        li.appendChild(pct);
+
+        list.appendChild(li);
+      });
+    });
+  }
+
+  // Live readout for whatever the user types into the widget.
+  var liveTimer = null;
+  var liveSeq = 0;
+
+  function showLiveImpact(fromValue) {
+    var out = $('[data-jup-impact]');
+    if (!out) return;
+
+    var sol = toNum(fromValue);
+    if (sol === null || sol <= 0) { out.textContent = ''; return; }
+
+    clearTimeout(liveTimer);
+    var seq = ++liveSeq;
+    liveTimer = setTimeout(function () {
+      quoteImpact(lamports(sol)).then(function (pct) {
+        if (seq !== liveSeq) return;
+        out.textContent = 'Price impact on ' + sol + ' SOL: −' + pct.toFixed(2) + '%' +
+          (pct >= JUP.badPct ? ' — that is a lot for this pool.'
+            : pct >= JUP.warnPct ? ' — worth knowing before you press Swap.'
+            : '');
+        out.className = 'jup-impact ' + impactClass(pct);
+      }).catch(function () {
+        if (seq !== liveSeq) return;
+        out.textContent = '';
+      });
+    }, 400);
+  }
+
+  // A blocked stylesheet request (Google Fonts among them) leaves the plugin
+  // with an empty shadow root and no error of its own, so an empty box is a
+  // real outcome to detect rather than assume away.
+  function widgetLooksEmpty() {
+    var target = document.getElementById(JUP.targetId);
+    if (!target || !target.children.length) return true;
+
+    var stack = [target];
+    var sawShadow = false;
+    while (stack.length) {
+      var el = stack.pop();
+      if (el.shadowRoot) {
+        sawShadow = true;
+        if (el.shadowRoot.childElementCount > 0) return false;
+      }
+      for (var i = 0; i < el.children.length; i++) stack.push(el.children[i]);
+    }
+    return sawShadow;
+  }
+
+  function jupFailed(reason) {
+    if (jupState.failed) return;
+    jupState.failed = true;
+    jupState.loading = false;
+
+    var wrap = $('[data-jup-wrap]');
+    var load = $('[data-buy-load]');
+    if (wrap) wrap.hidden = true;
+    if (load) {
+      load.hidden = false;
+      var note = $('.buy-load-note', load);
+      if (note) {
+        note.textContent = "Jupiter's swap box didn't load — some browser extensions and networks block it. " +
+          'The jup.ag link below does the same trade.';
+        note.classList.add('is-error');
+      }
+      var btn = $('[data-load-widget]', load);
+      if (btn) btn.hidden = true;
+    }
+    if (window.console && console.warn) console.warn('[CUNA] Jupiter widget:', reason);
+  }
+
+  function initJupiter() {
+    if (!window.Jupiter || typeof window.Jupiter.init !== 'function') {
+      jupFailed('window.Jupiter missing after script load');
+      return;
+    }
+
+    // init() returns a promise and REJECTS on bad config — it does not throw,
+    // so try/catch alone would miss it.
+    Promise.resolve(window.Jupiter.init({
+      displayMode: 'integrated',
+      integratedTargetId: JUP.targetId,
+      containerStyles: { height: '560px', borderRadius: '18px' },
+      // Defaults to TRUE, which would silently reconnect a wallet on every
+      // later visit — the opposite of what this page offers people.
+      autoConnect: false,
+      defaultExplorer: 'Solscan',
+      branding: { name: 'CUNALINGUS', logoUri: JUP.logoUri },
+      formProps: {
+        swapMode: 'ExactIn',
+        initialInputMint: JUP.solMint,
+        initialOutputMint: CONFIG.mint,
+        fixedMint: CONFIG.mint,
+        initialAmount: JUP.defaultLamports
+      },
+      onFormUpdate: function (form) {
+        showLiveImpact(form && form.fromValue);
+      },
+      onSwapError: function (e) {
+        if (window.console && console.warn) console.warn('[CUNA] swap error', e && e.error);
+      }
+    })).then(function () {
+      jupState.loaded = true;
+      jupState.loading = false;
+      var load = $('[data-buy-load]');
+      if (load) load.hidden = true;
+      showLiveImpact(0.05);
+      setTimeout(function () {
+        if (widgetLooksEmpty()) jupFailed('widget mounted but rendered empty');
+      }, 2500);
+    }).catch(function (err) {
+      jupFailed(err && err.message ? err.message : err);
+    });
+  }
+
+  function loadJupiter() {
+    if (jupState.loading || jupState.loaded) return;
+    jupState.loading = true;
+
+    var btn = $('[data-load-widget]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Loading Jupiter…'; }
+
+    var wrap = $('[data-jup-wrap]');
+    if (wrap) wrap.hidden = false;
+
+    var timeout = setTimeout(function () {
+      if (!jupState.loaded) jupFailed('timed out after ' + JUP.loadTimeoutMs + 'ms');
+    }, JUP.loadTimeoutMs);
+
+    var script = document.createElement('script');
+    script.src = JUP.script;
+    script.async = true;
+    script.onload = function () { clearTimeout(timeout); initJupiter(); };
+    script.onerror = function () { clearTimeout(timeout); jupFailed('script failed to load'); };
+    document.head.appendChild(script);
+  }
+
+  function wireBuy() {
+    var btn = $('[data-load-widget]');
+    if (btn) btn.addEventListener('click', loadJupiter);
+  }
+
+  // ──────────────────────────────────────────────────────────
   // Go
   // ──────────────────────────────────────────────────────────
   wireLinks();
@@ -748,6 +1008,7 @@
   buildMemes();
   buildBurnWallet();
   wireBag();
+  wireBuy();
   refresh();
 
   setInterval(function () {

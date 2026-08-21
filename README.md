@@ -34,6 +34,7 @@ closer to production.
 | Circulating supply, burn progress | Solana JSON-RPC `getTokenSupply` | `solana-rpc.publicnode.com`, falling back to `api.mainnet-beta.solana.com` |
 | A wallet's $CUNA balance (connected or pasted) | Solana JSON-RPC `getTokenAccountsByOwner` | Same endpoints; read-only, see below |
 | Balance waiting in the burn wallet | Solana JSON-RPC `getTokenAccountsByOwner` | Only when `burnWallet` is configured |
+| Price impact on the buy section | [Jupiter quote API](https://lite-api.jup.ag/swap/v1/quote) | CORS-open, keyless |
 
 Data refreshes every 30 seconds while the tab is visible. If both sources fail
 the page keeps its last values and says so instead of showing zeros.
@@ -74,6 +75,63 @@ If someone later wants a feature that needs a signature, treat it as a new
 feature with a completely different threat model — don't quietly widen this
 one. The safety copy on the page tells visitors we will never ask them to
 sign, and that promise is only worth anything if the code keeps it.
+
+## The buy widget (Jupiter Plugin)
+
+The Buy section embeds Jupiter's swap widget. Things worth knowing before
+touching it:
+
+**Use `plugin.jup.ag/plugin-v1.js`.** "Jupiter Terminal"
+(`terminal.jup.ag/main-v2.js`, `main-v4.js`) is the retired predecessor —
+Jupiter's Terminal docs now redirect to the Plugin page. All three URLs still
+return HTTP 200, so a 200 is not evidence of currency. `main-v2` in particular
+has no Shadow DOM and injects its Tailwind reset into the host document, which
+would wreck this stylesheet sitewide.
+
+**The option is `fixedMint`, singular.** `fixedOutputMint` was a Terminal-era
+option and is silently ignored by the Plugin — copy an old snippet and users
+get a wide-open token picker instead of a locked one. `fixedMint` is what stops
+anyone buying an impostor token called CUNA through this page.
+
+**`autoConnect` defaults to `true`.** It is explicitly set to `false`. Leaving
+it out would silently reconnect a visitor's wallet on every later visit, which
+is the opposite of what this page offers people.
+
+**`init()` returns a promise and rejects — it does not throw.** A `try/catch`
+around it catches nothing. It must also be called after the script's `onload`,
+and the target div must already exist.
+
+**No RPC.** The plugin runs on Jupiter's hosted Ultra API. There is no endpoint
+to configure and nothing here to rate-limit.
+
+### Why it loads on a click
+
+The script is injected in JS when the button is pressed, not written into
+`index.html`. Three reasons: visitors who only came to read the burn tracker
+never execute third-party code on this origin; the disclosure next to the
+button ("nothing from Jupiter is loaded until you press this") is only honest
+if it is true; and the widget is ~320 KB gzipped against a page that is
+currently ~18 KB.
+
+### Why the page computes its own price impact
+
+The widget shows dollar amounts but never a price-impact percentage. In a pool
+this thin that difference is the whole story — a 2 SOL buy currently loses
+about 15%, and Jupiter's UI will not say so. So `app.js` quotes
+`lite-api.jup.ag/swap/v1/quote` itself and renders the number, both as a table
+of sizes before the widget loads and live as the amount changes. Colour thresholds
+are `CONFIG.jupiter.warnPct` / `badPct`.
+
+Note `quote-api.jup.ag/v6` is dead (502) — use `lite-api.jup.ag/swap/v1/quote`.
+
+### The failure path is not optional
+
+The plugin fetches its stylesheets with `Promise.all`, and one of them is from
+Google Fonts. Any single rejection discards all of them and the widget renders
+as an empty box with no error — and blocking `fonts.googleapis.com` is common
+among exactly this audience (uBlock, Brave shields, NextDNS). So there is a
+load timeout, an empty-shadow-root check, and a jup.ag link that is visible
+at all times regardless of widget state. Do not remove them.
 
 ## Editing the site
 

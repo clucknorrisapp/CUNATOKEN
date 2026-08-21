@@ -51,15 +51,14 @@
     </a>
   </div>
   <nav class="nav-links" aria-label="Sections">
+    <a href="#buy">Buy</a>
     <a href="#burn">Burn</a>
     <a href="#bag">Your bag</a>
     <a href="#stats">Stats</a>
     <a href="#memes" data-memes-nav hidden>Memes</a>
     <a href="#community">Community</a>
   </nav>
-  <a class="btn btn-buy btn-sm" data-buy-link
-     href="https://jup.ag/tokens/4yro2xbCxMFVvygCsj5FZMgZnVCb8EqcbPGTbSGCgDBc"
-     target="_blank" rel="noopener">Buy <span class="nav-buy-ticker">$CUNA</span></a>
+  <a class="btn btn-buy btn-sm" href="#buy">Buy <span class="nav-buy-ticker">$CUNA</span></a>
 </header>
 
 <main id="main">
@@ -73,9 +72,8 @@
       <p class="hero-tagline">Lick the charts. Eat the bags.<br>Never come up for air.</p>
 
       <div class="cta-row">
-        <a class="btn btn-buy" data-buy-link target="_blank" rel="noopener"
-           href="https://jup.ag/tokens/4yro2xbCxMFVvygCsj5FZMgZnVCb8EqcbPGTbSGCgDBc">
-          <span class="btn-emoji" aria-hidden="true">👅</span> Buy on Jupiter
+        <a class="btn btn-buy" href="#buy">
+          <span class="btn-emoji" aria-hidden="true">👅</span> Buy $CUNA
         </a>
         <a class="btn btn-ghost" data-chart-link target="_blank" rel="noopener"
            href="https://dexscreener.com/solana/4yro2xbCxMFVvygCsj5FZMgZnVCb8EqcbPGTbSGCgDBc">
@@ -118,6 +116,53 @@
       </div>
     </div>
   </div>
+
+  <!-- ───────────────────────── BUY ───────────────────────── -->
+  <section class="section" id="buy">
+    <div class="section-head">
+      <h2 class="section-title">Buy $CUNA</h2>
+      <p class="section-sub">Swap right here through Jupiter, or open the same trade on jup.ag. Your call.</p>
+    </div>
+
+    <div class="card buy-card">
+
+      <div class="pool-note">
+        <p><strong>Small pool, so size matters.</strong> All of $CUNA's liquidity is one Orca pool. Small buys fill near the quoted price; big ones move the price against you, and you pay that spread on the way out too. Live, right now:</p>
+        <ul class="impact-list" data-impact-list>
+          <li class="impact-loading">Reading live quotes from Jupiter…</li>
+        </ul>
+        <p class="pool-foot">Straight from Jupiter's quote API, refreshed with the rest of the page. Not a warning against buying — just the number, so you can pick your size with your eyes open.</p>
+      </div>
+
+      <div class="buy-load" data-buy-load>
+        <button class="btn btn-buy" type="button" data-load-widget>
+          <span class="btn-emoji" aria-hidden="true">👅</span> Load the swap box
+        </button>
+        <p class="buy-load-note">This loads Jupiter's swap widget from jup.ag onto this page. Until you press it, nothing from Jupiter is loaded and nothing about you is sent anywhere.</p>
+      </div>
+
+      <div class="jup-wrap" data-jup-wrap hidden>
+        <div id="jupiter-plugin"></div>
+        <p class="jup-impact" data-jup-impact role="status"></p>
+      </div>
+
+      <p class="buy-fallback">
+        <a data-chart-buy href="https://jup.ag/tokens/4yro2xbCxMFVvygCsj5FZMgZnVCb8EqcbPGTbSGCgDBc"
+           target="_blank" rel="noopener">Rather do it on jup.ag? Open it there ↗</a>
+      </p>
+
+      <div class="safety safety-swap">
+        <span class="safety-icon" aria-hidden="true">✍️</span>
+        <p>
+          <strong>This one does ask you to sign — that's what a swap is.</strong> It's the only thing on this site that does. Your wallet, not this page, shows you the transaction. Read it before you approve it.
+          <br><strong>A real swap looks like:</strong> your wallet showing SOL leaving and $CUNA arriving, in amounts that match what you typed. That's the whole thing.
+          <br><strong>A drainer looks like:</strong> a request to sign a <em>message</em> instead of a transaction; anything worded "verify", "authenticate", "claim" or "migrate"; a transaction where nothing comes back to you; or a token approval you didn't ask for. Reject it and close the tab.
+          <br><strong>The token is locked to one mint.</strong> This box can only buy <code class="mint-inline" data-field="mint">—</code> — the same address printed at the bottom of this page. You can change what you pay with, but you can't accidentally buy someone else's coin called CUNA through here.
+          <br><strong>Jupiter will flag $CUNA as "not verified".</strong> That's accurate and we're not hiding it: it means $CUNA isn't on Jupiter's verified token list, which almost no new coin is. Mint and freeze authority are both revoked — check the address yourself.
+        </p>
+      </div>
+    </div>
+  </section>
 
   <!-- ───────────────────────── BURN TRACKER ───────────────────────── -->
   <section class="section" id="burn">
@@ -201,9 +246,10 @@
       <div class="safety">
         <span class="safety-icon" aria-hidden="true">🔒</span>
         <p>
-          <strong>Read-only, always.</strong> Connecting shares your public wallet address with this page so it can look up your balance on-chain. It does not request a signature, a transaction, or a token approval, and it cannot move anything out of your wallet.
+          <strong>This box is read-only.</strong> Connecting here shares your public wallet address with the page so it can look up your balance on-chain. It does not request a signature, a transaction, or a token approval, and it cannot move anything out of your wallet.
           Prefer to keep your wallet out of it entirely? Paste an address instead — that route touches no wallet at all.
-          <br><strong>If any site calling itself $CUNA asks you to sign, approve, or "verify" — close the tab.</strong> We will never ask.
+          <br><strong>The Buy box is the only thing on this site that ever asks you to sign</strong>, and only after you type an amount and press Swap yourself. This box, the burn tracker and the stats are all read-only.
+          <br><strong>Nothing calling itself $CUNA should ever ask you to sign a message, "verify" your wallet, or approve a token to claim, migrate or unlock something.</strong> There is no airdrop, no claim, no migration, and we will never DM you first. See any of that — close the tab.
         </p>
       </div>
 
