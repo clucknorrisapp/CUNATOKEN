@@ -116,9 +116,8 @@ a { color: var(--pink-3); }
 
 .nav-links {
   display: flex; gap: clamp(.6rem, 2vw, 1.5rem);
-  margin-left: auto; flex-wrap: wrap;
+  flex-wrap: wrap;
 }
-.nav-links + .nav-social { margin-left: .3rem; }
 .nav-links a {
   color: var(--cream); text-decoration: none; font-weight: 700;
   padding: .25rem .1rem; border-bottom: 3px solid transparent;
@@ -128,7 +127,6 @@ a { color: var(--pink-3); }
 
 @media (max-width: 720px) {
   .nav-links { display: none; }
-  .nav-social { margin-left: auto; }
 }
 
 @media (max-width: 400px) {
@@ -143,7 +141,14 @@ a { color: var(--pink-3); }
   .nav-buy-ticker { display: none; }
 }
 
-.nav-social { display: flex; gap: .45rem; flex: 0 0 auto; }
+.nav-social {
+  display: flex; gap: .45rem; flex: 0 0 auto;
+  /* Sits beside the logo and pushes the rest of the header right, so the
+     two places people actually gather are among the first things read.
+     Doubles as the mobile layout: with the text links hidden this still
+     leaves Buy on the right. */
+  margin-right: auto;
+}
 
 .social-btn {
   display: grid; place-items: center;
