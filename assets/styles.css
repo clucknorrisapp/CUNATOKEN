@@ -118,6 +118,7 @@ a { color: var(--pink-3); }
   display: flex; gap: clamp(.6rem, 2vw, 1.5rem);
   margin-left: auto; flex-wrap: wrap;
 }
+.nav-links + .nav-social { margin-left: .3rem; }
 .nav-links a {
   color: var(--cream); text-decoration: none; font-weight: 700;
   padding: .25rem .1rem; border-bottom: 3px solid transparent;
@@ -127,7 +128,37 @@ a { color: var(--pink-3); }
 
 @media (max-width: 720px) {
   .nav-links { display: none; }
+  .nav-social { margin-left: auto; }
 }
+
+@media (max-width: 400px) {
+  .nav { gap: .5rem; padding-left: .7rem; padding-right: .7rem; }
+  .nav-brand { font-size: 1.2rem; gap: .4rem; }
+  .nav-brand img { width: 34px; height: 34px; }
+  .social-btn { width: 34px; height: 34px; }
+  .social-btn svg { width: 16px; height: 16px; }
+  .btn-sm { padding: .45rem .75rem; font-size: .85rem; }
+  /* "Buy $CUNA" is more than a narrow header can hold next to everything
+     else; the ticker drops and the button reads simply "Buy". */
+  .nav-buy-ticker { display: none; }
+}
+
+.nav-social { display: flex; gap: .45rem; flex: 0 0 auto; }
+
+.social-btn {
+  display: grid; place-items: center;
+  width: 40px; height: 40px;
+  color: var(--cream-2);
+  background: var(--pink);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 0 4px 0 var(--ink);
+  transition: transform .12s ease, box-shadow .12s ease, background .15s;
+}
+.social-btn:hover { background: var(--pink-2); transform: translateY(2px); box-shadow: 0 2px 0 var(--ink); }
+.social-btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--ink); }
+.social-btn[hidden] { display: none; }
+.social-btn svg { width: 19px; height: 19px; fill: currentColor; display: block; }
 
 /* ─────────────── buttons ─────────────── */
 
@@ -145,6 +176,7 @@ a { color: var(--pink-3); }
 
 .btn-sm { padding: .5rem 1rem; font-size: .95rem; box-shadow: 0 4px 0 var(--ink); }
 .btn-emoji { font-size: 1.15em; line-height: 1; }
+.btn-icon { width: 1.05em; height: 1.05em; fill: currentColor; flex: 0 0 auto; }
 
 .btn-buy { background: var(--cream); color: var(--ink); }
 .btn-buy:hover { background: #fff; }

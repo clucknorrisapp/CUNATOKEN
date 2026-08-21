@@ -303,19 +303,42 @@
     $$('[data-buy-link]').forEach(function (a) { a.href = CONFIG.buyUrl; });
     $$('[data-chart-link]').forEach(function (a) { a.href = CONFIG.chartUrl; });
     setField('mint', CONFIG.mint);
+
+    // The header icons carry real hrefs in the markup so they work without
+    // JS. This keeps CONFIG authoritative anyway, and drops any icon whose
+    // URL has been cleared rather than leaving a link to nowhere.
+    $$('[data-social]').forEach(function (a) {
+      var url = CONFIG.socials[a.getAttribute('data-social')];
+      if (url) { a.href = url; a.hidden = false; }
+      else { a.hidden = true; }
+    });
   }
 
-  function makeLink(href, emoji, label, cls) {
+  // Reuses the header's inline SVGs so the icon artwork lives in exactly one
+  // place, and the community row can't drift from the header.
+  function socialIcon(name) {
+    var source = $('[data-social="' + name + '"] svg');
+    return source ? source.cloneNode(true) : null;
+  }
+
+  function makeLink(href, icon, label, cls) {
     var a = document.createElement('a');
     a.className = 'btn ' + cls;
     a.href = href;
     a.target = '_blank';
     a.rel = 'noopener';
-    var e = document.createElement('span');
-    e.className = 'btn-emoji';
-    e.setAttribute('aria-hidden', 'true');
-    e.textContent = emoji;
-    a.appendChild(e);
+
+    // icon is either a cloned SVG node or an emoji string.
+    if (icon && icon.nodeType === 1) {
+      icon.setAttribute('class', 'btn-icon');
+      a.appendChild(icon);
+    } else if (icon) {
+      var e = document.createElement('span');
+      e.className = 'btn-emoji';
+      e.setAttribute('aria-hidden', 'true');
+      e.textContent = icon;
+      a.appendChild(e);
+    }
     a.appendChild(document.createTextNode(label));
     return a;
   }
@@ -325,8 +348,8 @@
     if (!row) return;
 
     var items = [];
-    if (CONFIG.socials.telegram) items.push([CONFIG.socials.telegram, '💬', 'Telegram', 'btn-buy']);
-    if (CONFIG.socials.x) items.push([CONFIG.socials.x, '🐦', 'X / Twitter', 'btn-buy']);
+    if (CONFIG.socials.telegram) items.push([CONFIG.socials.telegram, socialIcon('telegram'), 'Telegram', 'btn-buy']);
+    if (CONFIG.socials.x) items.push([CONFIG.socials.x, socialIcon('x'), 'X', 'btn-buy']);
     items.push([CONFIG.buyUrl, '👅', 'Buy on Jupiter', 'btn-ghost']);
     items.push([CONFIG.chartUrl, '📈', 'DexScreener', 'btn-ghost']);
     items.push([CONFIG.explorerUrl, '🔎', 'Solscan', 'btn-ghost']);
