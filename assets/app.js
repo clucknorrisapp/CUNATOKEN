@@ -67,7 +67,10 @@
       defaultLamports: '50000000', // 0.05 SOL
         warnPct: 3,
       badPct: 10,
-      loadTimeoutMs: 12000
+      loadTimeoutMs: 12000,
+      // The second-stage bundle is ~800KB, so allow for a slow connection
+      // before calling the widget dead.
+      readyTimeoutMs: 20000
     },
 
     // Public burn wallet. People can send $CUNA here to take it out of supply
@@ -1014,24 +1017,51 @@
     }, 400);
   }
 
-  // A blocked stylesheet request (Google Fonts among them) leaves the plugin
-  // with an empty shadow root and no error of its own, so an empty box is a
-  // real outcome to detect rather than assume away.
+  // The plugin has two independent ways to die silently, and init() resolves
+  // in both. Checking only one of them still ships an empty box.
+  //
+  //   1. It fetches its stylesheets with Promise.all, and one of them is from
+  //      Google Fonts. Any single rejection discards all of them and the
+  //      shadow root is left essentially empty.
+  //   2. Its stub injects a second ~800KB script and neither awaits nor
+  //      catches it. If that is blocked — plausible for a large script on a
+  //      crypto domain — the shadow root fills in and looks healthy, the box
+  //      is a full 560px tall, and the portal inside it stays empty forever
+  //      while the stub polls for a global that never arrives.
+  //
+  // Requiring shadow content AND that global is correct in both cases.
   function widgetLooksEmpty() {
     var target = document.getElementById(JUP.targetId);
     if (!target || !target.children.length) return true;
 
+    var hasShadowContent = false;
     var stack = [target];
-    var sawShadow = false;
     while (stack.length) {
       var el = stack.pop();
-      if (el.shadowRoot) {
-        sawShadow = true;
-        if (el.shadowRoot.childElementCount > 0) return false;
-      }
+      if (el.shadowRoot && el.shadowRoot.childElementCount > 0) hasShadowContent = true;
       for (var i = 0; i < el.children.length; i++) stack.push(el.children[i]);
     }
-    return sawShadow;
+    if (!hasShadowContent) return true;
+
+    return !(window.JupiterRenderer && window.JupiterRenderer.RenderJupiter);
+  }
+
+  // Polls rather than checking once, so a slow connection fetching that second
+  // script isn't mistaken for a dead widget.
+  function watchWidget() {
+    var deadline = new Date().getTime() + JUP.readyTimeoutMs;
+    var timer = setInterval(function () {
+      if (!widgetLooksEmpty()) {
+        clearInterval(timer);
+        var loading = $('[data-jup-loading]');
+        if (loading) loading.hidden = true;
+        return;
+      }
+      if (new Date().getTime() > deadline) {
+        clearInterval(timer);
+        jupFailed('widget never finished rendering');
+      }
+    }, 500);
   }
 
   function jupFailed(reason) {
@@ -1092,9 +1122,7 @@
       var load = $('[data-buy-load]');
       if (load) load.hidden = true;
       showLiveImpact(0.05);
-      setTimeout(function () {
-        if (widgetLooksEmpty()) jupFailed('widget mounted but rendered empty');
-      }, 2500);
+      watchWidget();
     }).catch(function (err) {
       jupFailed(err && err.message ? err.message : err);
     });

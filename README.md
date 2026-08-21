@@ -138,29 +138,53 @@ currently ~18 KB.
 
 ### The one line of price impact
 
-The widget shows dollar amounts but never a price-impact percentage, and in a
-pool this thin that difference is the whole story — a 2 SOL buy currently costs
-about 15% and Jupiter's UI will not say so. So `app.js` quotes
-`lite-api.jup.ag/swap/v1/quote` itself and prints one line under the widget for
-whatever amount is typed, amber past `CONFIG.jupiter.warnPct`, red past
-`badPct`.
+`app.js` quotes `lite-api.jup.ag/swap/v1/quote` itself and prints one line
+under the widget for whatever amount is typed — amber past
+`CONFIG.jupiter.warnPct`, red past `badPct`. In a pool this thin that number is
+the whole story: a 2 SOL buy currently costs about 15%.
 
-There used to be a table of impact-at-various-sizes above the widget as well.
-It was removed deliberately: it read like a trading terminal on what is a meme
-coin site. The single live line stays because it is small, it only appears once
-someone has typed an amount, and it is the only price-impact figure a buyer
-gets from anywhere.
+Jupiter's widget does have a price-impact row of its own, but it only appears
+by accident. Ultra returns `priceImpactPct` as a *negative* fraction, and the
+row is gated on `Number(formatted) < 0.01` — true for a negative in
+English-style locales, so the row is dropped; `NaN` and therefore false in
+comma-decimal locales, so it renders, as a double negative like `--8,95%`.
+Measured across 29 locales: 8 hide it, 21 show it garbled. So an
+English-speaking visitor gets no impact figure from Jupiter at all, and most
+other visitors get a broken one. Either way the host page printing a clean
+number is worth it. Do not write copy claiming Jupiter never shows it — that is
+only true for some visitors, and it is a bug on a rolling URL that could be
+fixed at any time.
+
+There used to be a table of impact-at-various-sizes above the widget too. It
+was removed deliberately: it read like a trading terminal on a meme coin site.
 
 Note `quote-api.jup.ag/v6` is dead (502) — use `lite-api.jup.ag/swap/v1/quote`.
 
-### The failure path is not optional
+### The failure paths are not optional
 
-The plugin fetches its stylesheets with `Promise.all`, and one of them is from
-Google Fonts. Any single rejection discards all of them and the widget renders
-as an empty box with no error — and blocking `fonts.googleapis.com` is common
-among exactly this audience (uBlock, Brave shields, NextDNS). So there is a
-load timeout, an empty-shadow-root check, and a jup.ag link that is visible
-at all times regardless of widget state. Do not remove them.
+The plugin can die silently in two independent ways, and `init()` resolves in
+both. Checking only one of them still ships an empty box.
+
+1. It fetches its stylesheets with `Promise.all`, one of which is from Google
+   Fonts. Any single rejection discards all of them and the shadow root is left
+   essentially empty. Blocking `fonts.googleapis.com` is common among exactly
+   this audience — uBlock, Brave shields, NextDNS.
+2. Its loader injects a second ~800KB script and neither awaits nor catches it.
+   If that is blocked — plausible for a large script on a crypto domain — the
+   shadow root fills in and looks healthy, the box is a full 560px tall, and
+   the portal inside stays empty forever while the loader polls for a global
+   that never arrives.
+
+So `widgetLooksEmpty()` requires shadow content **and**
+`window.JupiterRenderer.RenderJupiter`. That combined predicate was measured
+correct in all three states (healthy, fonts blocked, chunk blocked); either
+check alone passes one of the two failures. It polls rather than sampling once,
+so a slow connection fetching 800KB isn't mistaken for a dead widget, and a
+placeholder sits in the container meanwhile so the wait doesn't look like
+breakage.
+
+There is also a load timeout and a jup.ag link visible at all times regardless
+of widget state. Do not remove any of it.
 
 ## Editing the site
 

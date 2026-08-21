@@ -444,6 +444,11 @@ a { color: var(--pink-3); }
 
 .jup-wrap[hidden] { display: none; }
 #jupiter-plugin { min-height: 560px; }
+.jup-loading {
+  margin: 0 0 -1.5rem; padding-top: 1rem;
+  text-align: center; font-size: .9rem; font-weight: 700; color: var(--pink-3);
+}
+.jup-loading[hidden] { display: none; }
 .jup-impact {
   margin: .9rem 0 0; text-align: center;
   font-size: .9rem; font-weight: 800;
