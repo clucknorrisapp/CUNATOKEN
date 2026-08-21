@@ -431,33 +431,7 @@ a { color: var(--pink-3); }
 
 .buy-card { max-width: 860px; margin: 0 auto; }
 
-.pool-note {
-  background: rgba(255, 191, 36, .1);
-  border: 3px solid var(--ink);
-  border-radius: 16px;
-  padding: 1rem 1.15rem;
-  margin-bottom: 1.4rem;
-}
-.pool-note p { margin: 0; font-size: .92rem; line-height: 1.5; }
-.pool-foot { margin-top: .75rem !important; font-size: .8rem !important; color: var(--pink-3); font-weight: 600; }
 
-.impact-list {
-  list-style: none;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: .55rem;
-  margin: .9rem 0 0; padding: 0;
-}
-.impact-list li {
-  display: flex; align-items: baseline; justify-content: space-between; gap: .5rem;
-  background: rgba(0, 0, 0, .35);
-  border: 3px solid var(--ink);
-  border-radius: 12px;
-  padding: .45rem .7rem;
-  font-size: .85rem; font-weight: 700;
-}
-.impact-list .impact-loading { justify-content: center; color: var(--pink-3); }
-.impact-size { color: var(--pink-3); }
-.impact-pct { font-family: var(--font-display); font-size: 1.05rem; letter-spacing: .02em; }
 .impact-ok { color: var(--mint); }
 .impact-warn { color: #fbbf24; }
 .impact-bad { color: var(--red); }

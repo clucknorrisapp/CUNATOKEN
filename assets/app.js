@@ -24,12 +24,20 @@
     burnGoal: 6900000000,
     launchSupply: 13659767778.871345,
 
-    // Amount locked in Jupiter locks. Measured on 2026-08-21 by summing every
-    // $CUNA token account owned by a PDA of the Jupiter Lock program
-    // (LocpQgucEQHbqNABEYvBvwoxCPsSbG91A1QaQhQQqjn) — 29 accounts, exactly
-    // this total. Re-measure if the locks change; the percentage shown beside
-    // it is computed against live supply, so it stays honest as supply burns.
+    // Jupiter Lock. The locks vest on a schedule and the released tokens are
+    // what gets burned, so the locked total falls over time — which is why it
+    // is read live rather than pinned to a constant. This program id owns the
+    // vesting escrows; the mint sits at byte 40 of the escrow account, so one
+    // getProgramAccounts call with a memcmp filter returns exactly this
+    // token's locks and nothing else.
+    lockProgram: 'LocpQgucEQHbqNABEYvBvwoxCPsSbG91A1QaQhQQqjn',
+    lockMintOffset: 40,
+    // Only used if that call fails (some RPCs refuse getProgramAccounts).
+    // Measured 2026-08-21; it will drift as locks vest, hence the fallback
+    // label saying so.
     lockedApprox: 7004310000,
+    // Locks change slowly, so this doesn't need the 30s cadence.
+    lockRefreshMs: 300000,
 
     // Public RPCs, tried in order. Both are CORS-open and keyless.
     rpcEndpoints: [
@@ -57,9 +65,7 @@
       logoUri: 'https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY',
       // Opens at a size that fills close to the quoted price in this pool.
       defaultLamports: '50000000', // 0.05 SOL
-      // Sizes shown in the up-front impact table, in SOL.
-      probeSizes: [0.05, 0.25, 1, 2],
-      warnPct: 3,
+        warnPct: 3,
       badPct: 10,
       loadTimeoutMs: 12000
     },
@@ -157,7 +163,7 @@
   var lastValues = {};
 
   // Latest good readings, shared with the wallet panel.
-  var state = { price: null, supply: null, solUsd: null };
+  var state = { price: null, supply: null, solUsd: null, locked: null };
 
   function animateField(name, value, formatter) {
     if (!isNum(value)) { setField(name, '—'); return; }
@@ -230,6 +236,121 @@
   }
 
   // ──────────────────────────────────────────────────────────
+  // Jupiter Lock escrows
+  //
+  // Field offsets into the vesting escrow account, confirmed against the
+  // chain: the decoded totals sum to exactly the balance held by the lock
+  // token accounts, so the layout below is right rather than merely plausible.
+  //   144 cliff_time        152 frequency (seconds)
+  //   160 cliff_unlock_amount
+  //   168 amount_per_period 176 number_of_period
+  //   184 total_claimed_amount
+  //   192 vesting_start_time
+  // ──────────────────────────────────────────────────────────
+
+  var LOCK = {
+    cliffTime: 144, frequency: 152, cliffAmount: 160,
+    perPeriod: 168, periods: 176, claimed: 184
+  };
+
+  function b64ToBytes(b64) {
+    var bin = atob(b64);
+    var out = [];
+    for (var i = 0; i < bin.length; i++) out.push(bin.charCodeAt(i));
+    return out;
+  }
+
+  // Reads a little-endian u64 as a double. Amounts here run to ~7e17 raw,
+  // past the exact-integer range, but the value is divided by 1e9 for display
+  // and the residual error is far below a whole token.
+  function u64(bytes, off) {
+    var lo = 0, hi = 0, i;
+    for (i = 3; i >= 0; i--) lo = lo * 256 + bytes[off + i];
+    for (i = 7; i >= 4; i--) hi = hi * 256 + bytes[off + i];
+    return hi * 4294967296 + lo;
+  }
+
+  function fetchLocks() {
+    return rpc('getProgramAccounts', [
+      CONFIG.lockProgram,
+      {
+        encoding: 'base64',
+        filters: [{ memcmp: { offset: CONFIG.lockMintOffset, bytes: CONFIG.mint } }]
+      }
+    ]).then(function (accounts) {
+      if (!Array.isArray(accounts) || !accounts.length) throw new Error('No locks returned');
+
+      var nowSec = Math.floor(new Date().getTime() / 1000);
+      var locked = 0, perDay = 0, count = 0;
+
+      accounts.forEach(function (entry) {
+        var data = entry && entry.account && entry.account.data;
+        var b64 = Array.isArray(data) ? data[0] : null;
+        if (!b64) return;
+
+        var b = b64ToBytes(b64);
+        if (b.length < 200) return;
+
+        var cliffAmount = u64(b, LOCK.cliffAmount);
+        var perPeriod = u64(b, LOCK.perPeriod);
+        var periods = u64(b, LOCK.periods);
+        var claimed = u64(b, LOCK.claimed);
+        var frequency = u64(b, LOCK.frequency);
+        var cliffTime = u64(b, LOCK.cliffTime);
+
+        var total = cliffAmount + perPeriod * periods;
+        locked += Math.max(total - claimed, 0);
+        count += 1;
+
+        // Only escrows past their cliff are releasing anything yet.
+        if (frequency > 0 && nowSec >= cliffTime) {
+          perDay += perPeriod * 86400 / frequency;
+        }
+      });
+
+      return { locked: locked / 1e9, perDay: perDay / 1e9, count: count };
+    });
+  }
+
+  function renderLocks(info) {
+    state.locked = info.locked;
+    var supply = state.supply;
+    var pct = (isNum(supply) && supply > 0 && info.locked <= supply)
+      ? (info.locked / supply) * 100 : null;
+
+    setField('locked', fmtCompact(info.locked) +
+      (isNum(pct) ? ' · ' + pct.toFixed(1) + '%' : ''));
+
+    setField('unlockRate', info.perDay > 0
+      ? fmtCompact(info.perDay) + ' / day'
+      : 'not started');
+  }
+
+  // Falls back to the pinned figure so the panel still says something true-ish
+  // if an RPC refuses getProgramAccounts.
+  function renderLocksFallback() {
+    if (isNum(state.locked)) return;
+    var supply = state.supply;
+    var pct = (isNum(supply) && supply > 0 && CONFIG.lockedApprox <= supply)
+      ? (CONFIG.lockedApprox / supply) * 100 : null;
+    setField('locked', '~' + fmtCompact(CONFIG.lockedApprox) +
+      (isNum(pct) ? ' · ' + pct.toFixed(1) + '%' : ''));
+    setField('unlockRate', '—');
+  }
+
+  var lastLockFetch = 0;
+
+  function refreshLocks(force) {
+    var now = new Date().getTime();
+    if (!force && now - lastLockFetch < CONFIG.lockRefreshMs) return Promise.resolve();
+    lastLockFetch = now;
+    return fetchLocks().then(renderLocks).catch(function (err) {
+      renderLocksFallback();
+      if (window.console && console.warn) console.warn('[CUNA] locks:', err);
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────
   // Data: live token supply straight off a public Solana RPC
   // ──────────────────────────────────────────────────────────
   function rpcOnce(endpoint, method, params) {
@@ -291,14 +412,6 @@
     animateField('remaining', remaining, fmtInt);
     setField('goal', fmtInt(CONFIG.burnGoal));
 
-    // Once supply burns below the locked amount the percentage would read
-    // over 100%; drop it rather than print a wrong number, matching how the
-    // rest of the file hides values it cannot state honestly.
-    var lockedPct = (supply > 0 && CONFIG.lockedApprox <= supply)
-      ? (CONFIG.lockedApprox / supply) * 100 : null;
-    setField('locked', fmtCompact(CONFIG.lockedApprox) +
-      (isNum(lockedPct) ? ' · ' + lockedPct.toFixed(1) + '%' : ''));
-
     setField('burnPct', pct.toFixed(2) + '% there');
     setField('launchLabel', 'Launch · ' + fmtCompact(CONFIG.launchSupply));
     setField('goalLabel', 'Goal · ' + fmtCompact(CONFIG.burnGoal));
@@ -352,7 +465,7 @@
       // something slightly different.
       refreshBag();
       refreshBurnWallet();
-      renderImpactTable();
+      refreshLocks();
     }).catch(function (err) {
       if (seq !== refreshSeq) return;
       failures += 1;
@@ -871,48 +984,6 @@
     if (pct >= JUP.badPct) return 'impact-bad';
     if (pct >= JUP.warnPct) return 'impact-warn';
     return 'impact-ok';
-  }
-
-  function sizeLabel(sol) {
-    var usd = isNum(state.solUsd) ? ' · ' + fmtUsd(sol * state.solUsd) : '';
-    return sol + ' SOL' + usd;
-  }
-
-  function renderImpactTable() {
-    var list = $('[data-impact-list]');
-    if (!list) return Promise.resolve();
-
-    return Promise.all(JUP.probeSizes.map(function (sol) {
-      return quoteImpact(lamports(sol))
-        .then(function (pct) { return { sol: sol, pct: pct }; })
-        .catch(function () { return { sol: sol, pct: null }; });
-    })).then(function (rows) {
-      if (!rows.some(function (r) { return isNum(r.pct); })) {
-        list.textContent = '';
-        var li = document.createElement('li');
-        li.className = 'impact-loading';
-        li.textContent = 'Jupiter quotes are unreachable right now.';
-        list.appendChild(li);
-        return;
-      }
-
-      list.textContent = '';
-      rows.forEach(function (r) {
-        var li = document.createElement('li');
-
-        var size = document.createElement('span');
-        size.className = 'impact-size';
-        size.textContent = sizeLabel(r.sol);
-        li.appendChild(size);
-
-        var pct = document.createElement('span');
-        pct.className = 'impact-pct ' + (isNum(r.pct) ? impactClass(r.pct) : '');
-        pct.textContent = isNum(r.pct) ? '−' + r.pct.toFixed(2) + '%' : '—';
-        li.appendChild(pct);
-
-        list.appendChild(li);
-      });
-    });
   }
 
   // Live readout for whatever the user types into the widget.

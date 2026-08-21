@@ -136,14 +136,20 @@ button ("nothing from Jupiter is loaded until you press this") is only honest
 if it is true; and the widget is ~320 KB gzipped against a page that is
 currently ~18 KB.
 
-### Why the page computes its own price impact
+### The one line of price impact
 
-The widget shows dollar amounts but never a price-impact percentage. In a pool
-this thin that difference is the whole story — a 2 SOL buy currently loses
-about 15%, and Jupiter's UI will not say so. So `app.js` quotes
-`lite-api.jup.ag/swap/v1/quote` itself and renders the number, both as a table
-of sizes before the widget loads and live as the amount changes. Colour thresholds
-are `CONFIG.jupiter.warnPct` / `badPct`.
+The widget shows dollar amounts but never a price-impact percentage, and in a
+pool this thin that difference is the whole story — a 2 SOL buy currently costs
+about 15% and Jupiter's UI will not say so. So `app.js` quotes
+`lite-api.jup.ag/swap/v1/quote` itself and prints one line under the widget for
+whatever amount is typed, amber past `CONFIG.jupiter.warnPct`, red past
+`badPct`.
+
+There used to be a table of impact-at-various-sizes above the widget as well.
+It was removed deliberately: it read like a trading terminal on what is a meme
+coin site. The single live line stays because it is small, it only appears once
+someone has typed an amount, and it is the only price-impact figure a buyer
+gets from anywhere.
 
 Note `quote-api.jup.ag/v6` is dead (502) — use `lite-api.jup.ag/swap/v1/quote`.
 
@@ -179,7 +185,17 @@ Everything you'd want to change lives in the `CONFIG` block at the top of
   an absent feature is much better than a page telling people to send tokens
   to a wrong address. When it is set, the block shows the address with a copy
   button and the live balance sitting in it.
-- **`lockedApprox`** — amount locked in Jupiter locks. The percentage beside it
+- **`lockProgram` / `lockMintOffset`** — how the locked total is read live. One
+  `getProgramAccounts` call against the Jupiter Lock program, filtered by mint
+  at byte 40, returns exactly this token's vesting escrows (29 of them today).
+  Locked = Σ(cliff + per-period × periods − claimed), and the daily unlock rate
+  comes from the escrows past their cliff. The decoded total agrees to the cent
+  with summing the lock-owned token accounts, which is how the byte offsets
+  were confirmed rather than guessed.
+- **`lockedApprox`** — only a fallback, for RPCs that refuse
+  `getProgramAccounts`. Shown with a `~` so a stale figure never masquerades as
+  a live one. It will drift as locks vest, which is the whole reason the live
+  read exists. The percentage beside it
   is computed against live supply, so it stays honest as supply burns down.
 - **`launchSupply`** — the actual supply at launch (13,659,767,778.871345),
   used *only* to size the burn progress bar. It is a fixed historical
