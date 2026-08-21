@@ -23,6 +23,8 @@
   --radius: 22px;
   --maxw: 1120px;
 
+  color-scheme: dark;
+
   --font-display: "Luckiest Guy", "Comic Sans MS", system-ui, sans-serif;
   --font-body: "Baloo 2", ui-rounded, "Segoe UI", system-ui, sans-serif;
 }
@@ -125,7 +127,7 @@ a { color: var(--pink-3); }
 }
 .nav-links a:hover { color: var(--pink-3); border-bottom-color: var(--pink); }
 
-@media (max-width: 720px) {
+@media (max-width: 840px) {
   .nav-links { display: none; }
 }
 
@@ -214,7 +216,7 @@ a { color: var(--pink-3); }
   display: inline-flex; align-items: center; gap: .5rem;
   margin: 0 0 .6rem;
   font-size: .82rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--pink-3);
+  color: var(--pink-2);
 }
 .dot {
   width: 9px; height: 9px; border-radius: 50%; background: var(--mint);
@@ -352,6 +354,8 @@ a { color: var(--pink-3); }
   padding: clamp(2rem, 6vw, 4rem) clamp(1rem, 4vw, 2rem);
   scroll-margin-top: 5rem;
 }
+
+.hero, #main { scroll-margin-top: 5rem; }
 
 .section-head { text-align: center; margin-bottom: clamp(1.5rem, 4vw, 2.5rem); }
 
@@ -640,7 +644,7 @@ a { color: var(--pink-3); }
   border: 3px solid var(--ink);
   border-radius: 999px;
 }
-.bag-input::placeholder { color: rgba(255, 143, 192, .6); }
+.bag-input::placeholder { color: rgba(255, 190, 219, .82); }
 .bag-input:focus { outline: 3px dashed var(--cream); outline-offset: 2px; }
 
 .bag-head {
@@ -781,4 +785,33 @@ a { color: var(--pink-3); }
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
   }
+}
+
+/* ─────────────── forced colors (Windows high contrast) ─────────────── */
+
+@media (forced-colors: active) {
+  /* Chromium forces `color` to CanvasText but leaves -webkit-text-stroke-color
+     alone, so a near-black stroke stays painted around now-black glyphs and
+     every headline and live number collapses into a solid blob. */
+  *, *::before, *::after { -webkit-text-stroke-width: 0 !important; }
+
+  /* Decorative, and not stripped automatically. */
+  .hero-title, .section-title { filter: none !important; }
+
+  /* The burn bar carries real information, so opt it out and let it keep
+     conveying progress. .bar-legend is a sibling, so .bar-pct is unaffected. */
+  .bar { forced-color-adjust: none; }
+  .bar-fill { forced-color-adjust: none; background: Highlight !important; }
+}
+
+/* ─────────────── print ─────────────── */
+
+@media print {
+  /* The contract address is the one thing worth printing, and cream-on-plum
+     prints as invisible. */
+  .bg, .nav, .marquee-clip, .buy-load, .jup-wrap { display: none !important; }
+  body { background: #fff; color: #000; }
+  .card, .ca-value, .mint-inline { background: #fff !important; color: #000 !important; }
+  .ca-value, .mint-inline { border: 1px solid #000; }
+  .section-title, .footer-line { -webkit-text-stroke-width: 0; color: #000; filter: none; }
 }

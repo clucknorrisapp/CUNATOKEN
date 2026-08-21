@@ -171,12 +171,45 @@ Solscan link are all derived from the mint so there's one place to change it.
 
 ## Deploying on Railway
 
-The repo is already set up as a Railway static site:
-
 1. New Project → Deploy from GitHub repo → pick this repo.
-2. Railway detects `nixpacks.toml`, builds with the `staticfile` provider and
-   serves the repo root with Caddy on `$PORT`. No env vars, no start command.
+2. Railway builds it with **Railpack**, which finds no `package.json` /
+   `go.mod` / `requirements.txt` and so falls through to its **staticfile**
+   provider. That sees `index.html` at the repo root, installs Caddy 2, and
+   serves `.` on `$PORT`. No env vars, no start command, nothing to configure.
 3. Push to the deploy branch → Railway redeploys.
+
+**`nixpacks.toml` and `railway.json` in this repo are almost certainly inert**,
+and it's worth knowing why before anyone edits them expecting an effect:
+
+- Railway's Config-as-Code (`railway.json` / `railway.toml`) is deprecated, and
+  **new services cannot opt into it** — existing legacy services still read it,
+  and even those stop on 2026-12-01. A service created today never reads it.
+  The file is schema-valid, it just isn't consulted.
+- Railpack's config file is `railpack.json`. It does not read `nixpacks.toml`
+  under any circumstances.
+
+The deploy works regardless, because Railpack's zero-config behaviour for a
+bare `index.html` is exactly what this site wants. Both files are kept only as
+a fallback for a service explicitly pinned to the legacy Nixpacks builder, and
+they can be deleted without changing anything.
+
+Worth noting if you ever do switch to the legacy Nixpacks builder: its
+`staticfile` provider serves with **nginx**, not Caddy, and the two produce
+different headers.
+
+### What Caddy serves, verified
+
+All asset paths in `index.html` are relative, so serving from `.` is correct.
+A local run of Railpack's exact generated Caddyfile confirmed the MIME types
+that matter — `text/css` for the stylesheet, `text/javascript` for the script,
+`image/jpeg` for the logo — with no `application/octet-stream` and no 404s.
+
+Railpack's stock Caddyfile also emits a CSP. The page is compatible with it:
+Google Fonts (`style-src https:`, `font-src https:`), the DexScreener and
+Solana RPC calls and Jupiter's APIs (`connect-src https:`), and the plugin
+script (`script-src https:`) are all permitted. Injected wallet providers are
+exempt from page CSP. If you add anything that needs `blob:`, a Worker, or
+`eval`, check the CSP first.
 
 To attach the domain: Service → Settings → Networking → Custom Domain (or buy
 it through Railway there), then follow the DNS instructions it shows.

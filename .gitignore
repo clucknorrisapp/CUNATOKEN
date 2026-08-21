@@ -6,3 +6,8 @@ node_modules/
 *.log
 .vscode/
 .idea/
+
+# Scratch/probe files: agents and manual testing have dropped these into the
+# repo root before, and `git add -A` will happily ship them.
+__*.html
+*.probe.*

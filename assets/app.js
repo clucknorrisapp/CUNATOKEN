@@ -128,8 +128,10 @@
 
   function fmtCompact(n) {
     if (!isNum(n)) return '—';
-    if (n >= 1e9) return trimZeros((n / 1e9).toFixed(2)) + 'B';
-    if (n >= 1e6) return trimZeros((n / 1e6).toFixed(2)) + 'M';
+    // Thresholds sit at each tier's rounding boundary, so a value that would
+    // round up (999,999,999 -> "1000M") is promoted instead.
+    if (n >= 999.995e6) return trimZeros((n / 1e9).toFixed(2)) + 'B';
+    if (n >= 999.95e3) return trimZeros((n / 1e6).toFixed(2)) + 'M';
     if (n >= 1e3) return trimZeros((n / 1e3).toFixed(1)) + 'K';
     return String(Math.round(n));
   }
@@ -209,7 +211,12 @@
     var native = toNum(pair.priceNative);
     state.solUsd = (isNum(price) && isNum(native) && native > 0) ? price / native : null;
     setField('price', fmtUsd(price));
-    setField('fdv', fmtUsd(mcap));
+    // DexScreener values this token against its ORIGINAL supply — it has not
+    // picked up the ~4B burned — so its market cap runs ~41% high and
+    // contradicts the live supply this same page shows in the burn tracker.
+    // Live supply x live price is the honest figure; DexScreener's is only a
+    // fallback for first paint, before the RPC has answered.
+    setField('fdv', fmtUsd(isNum(price) && isNum(state.supply) ? price * state.supply : mcap));
     setField('volume24', fmtUsd(volume));
     setField('liquidity', fmtUsd(liq));
 
@@ -238,7 +245,12 @@
       })
       .then(function (data) {
         if (data && data.error) throw new Error('RPC error on ' + method);
-        return data && data.result;
+        // Throw inside the per-endpoint promise so a 200 with a junk body
+        // fails over to the next endpoint instead of resolving undefined.
+        if (!data || data.result === undefined || data.result === null) {
+          throw new Error('RPC returned no result for ' + method);
+        }
+        return data.result;
       });
   }
 
@@ -264,6 +276,10 @@
 
   function renderSupply(supply) {
     state.supply = supply;
+    // Promise.all does not order renderMarket against renderSupply, so the
+    // cap is recomputed here too — otherwise it shows DexScreener's stale
+    // number for up to a full refresh interval.
+    if (isNum(state.price)) setField('fdv', fmtUsd(state.price * supply));
     animateField('supply', supply, fmtInt);
 
     var burned = Math.max(CONFIG.launchSupply - supply, 0);
@@ -275,7 +291,11 @@
     animateField('remaining', remaining, fmtInt);
     setField('goal', fmtInt(CONFIG.burnGoal));
 
-    var lockedPct = supply > 0 ? (CONFIG.lockedApprox / supply) * 100 : null;
+    // Once supply burns below the locked amount the percentage would read
+    // over 100%; drop it rather than print a wrong number, matching how the
+    // rest of the file hides values it cannot state honestly.
+    var lockedPct = (supply > 0 && CONFIG.lockedApprox <= supply)
+      ? (CONFIG.lockedApprox / supply) * 100 : null;
     setField('locked', fmtCompact(CONFIG.lockedApprox) +
       (isNum(lockedPct) ? ' · ' + lockedPct.toFixed(1) + '%' : ''));
 
@@ -308,11 +328,24 @@
       ' · price from DexScreener, supply from a public Solana RPC');
   }
 
+  var refreshSeq = 0;
+  var lastRefreshStart = 0;
+
   function refresh() {
+    // Tab focus can fire visibilitychange in bursts; without this each one
+    // starts its own pair of requests.
+    var now = new Date().getTime();
+    if (now - lastRefreshStart < 2000) return Promise.resolve();
+    lastRefreshStart = now;
+
+    // An older response landing last would otherwise repaint stale numbers.
+    var seq = ++refreshSeq;
+
     return Promise.all([
-      fetchMarket().then(renderMarket),
-      fetchSupply().then(renderSupply)
+      fetchMarket().then(function (pair) { if (seq === refreshSeq) renderMarket(pair); }),
+      fetchSupply().then(function (supply) { if (seq === refreshSeq) renderSupply(supply); })
     ]).then(function () {
+      if (seq !== refreshSeq) return;
       failures = 0;
       timeNote();
       // Price and supply just moved, so a connected bag is now worth
@@ -321,6 +354,7 @@
       refreshBurnWallet();
       renderImpactTable();
     }).catch(function (err) {
+      if (seq !== refreshSeq) return;
       failures += 1;
       note(failures > 1
         ? 'Live data is having a moment. Retrying — the chart is still out there.'
@@ -530,11 +564,14 @@
     var found = [];
     var seen = [];
 
-    function add(name, provider) {
+    // eager === false marks a provider that must never get the silent
+    // load-time connect: an unknown wallet may ignore onlyIfTrusted and pop
+    // its approval sheet with no user gesture behind it.
+    function add(name, provider, eager) {
       if (!provider || typeof provider.connect !== 'function') return;
       if (seen.indexOf(provider) !== -1) return;
       seen.push(provider);
-      found.push({ name: name, provider: provider });
+      found.push({ name: name, provider: provider, eager: eager !== false });
     }
 
     add('Phantom', w.phantom && w.phantom.solana);
@@ -545,7 +582,7 @@
     if (w.solana) {
       if (w.solana.isPhantom) add('Phantom', w.solana);
       else if (w.solana.isSolflare) add('Solflare', w.solana);
-      else add('Solana wallet', w.solana);
+      else add('Solana wallet', w.solana, false);
     }
     return found;
   }
@@ -623,6 +660,12 @@
 
   function showBag(message) {
     var byWallet = view.source === 'wallet';
+    // Clear the previous address's figures before the new read lands, so a
+    // slow or failing lookup can never leave one wallet's balance sitting
+    // under another wallet's address.
+    ['bagAmount', 'bagUsd', 'bagShare', 'bagRank'].forEach(function (f) {
+      setField(f, '—');
+    });
     setField('walletAddr', shortAddress(view.address));
     if (els.sourceLabel) els.sourceLabel.textContent = byWallet ? 'Connected' : 'Looking at';
     if (els.disconnectText) els.disconnectText.textContent = byWallet ? 'Disconnect' : 'Clear';
@@ -665,9 +708,17 @@
   function connectTo(entry, silent) {
     var provider = entry.provider;
     // connect() is the whole surface. Nothing else is ever called.
-    var attempt = silent
-      ? provider.connect({ onlyIfTrusted: true })
-      : provider.connect();
+    var attempt;
+    try {
+      attempt = silent
+        ? provider.connect({ onlyIfTrusted: true })
+        : provider.connect();
+    } catch (err) {
+      // Some injected providers throw synchronously rather than rejecting.
+      // Same failure, so put it on the same path instead of letting it
+      // escape the .catch and strand the UI on "Waiting for…".
+      return Promise.reject(err);
+    }
 
     return Promise.resolve(attempt).then(function (res) {
       var addr = readAddress(provider, res);
@@ -754,7 +805,10 @@
       els.disconnectBtn.addEventListener('click', function () {
         var provider = view.source === 'wallet' ? view.provider : null;
         if (provider && typeof provider.disconnect === 'function') {
-          try { provider.disconnect(); } catch (e) { /* wallet already gone */ }
+          // May throw synchronously OR return a rejecting promise.
+          try {
+            Promise.resolve(provider.disconnect()).catch(function () {});
+          } catch (e) { /* wallet already gone */ }
         }
         clearBag(provider ? 'Disconnected.' : '');
         if (els.lookupInput) els.lookupInput.value = '';
@@ -763,9 +817,9 @@
 
     // If this browser already trusts the site, reconnect without a popup.
     // Wallets that don't support onlyIfTrusted just reject; we stay quiet.
-    var known = detectWallets();
-    if (known.length) {
-      connectTo(known[0], true).catch(function () { /* not trusted yet */ });
+    var eager = detectWallets().filter(function (w) { return w.eager; });
+    if (eager.length) {
+      connectTo(eager[0], true).catch(function () { /* not trusted yet */ });
     }
   }
 

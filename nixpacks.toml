@@ -1,4 +1,13 @@
-# Railway builds this repo as a static site: Caddy serves the files as-is.
-# There is no build step and no server code — index.html at the repo root
-# is the whole app.
+# NOTE: this file is almost certainly INERT. Railway builds new services with
+# Railpack, not Nixpacks, and Railpack reads railpack.json — never
+# nixpacks.toml. It is kept only so that a service explicitly pinned to the
+# legacy Nixpacks builder still resolves the right provider.
+#
+# What actually happens on deploy: Railpack walks its provider list, finds no
+# package.json / go.mod / requirements.txt / etc., falls through to the
+# staticfile provider, sees index.html at the repo root, installs Caddy 2 and
+# serves "." on $PORT. No configuration needed — see the README.
+#
+# (For the record: the Nixpacks staticfile provider named here serves with
+# NGINX, not Caddy. Only Railpack uses Caddy.)
 providers = ["staticfile"]
