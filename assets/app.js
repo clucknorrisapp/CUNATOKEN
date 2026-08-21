@@ -17,10 +17,12 @@
     chain: 'solana',
 
     // Burn tracker. burnGoal is the announced target.
-    // launchSupply is a fixed launch-time constant used ONLY to size the
-    // progress bar (how far along the road we are). It is not live data.
+    // launchSupply is the actual supply at launch, confirmed by the team. It
+    // is a fixed historical constant used ONLY to size the progress bar (how
+    // far along the road we are) — it is not live data, and the supply it is
+    // measured against always is.
     burnGoal: 6900000000,
-    launchSupply: 10000000000,
+    launchSupply: 13659767778.871345,
 
     // Approximate amount locked in Jupiter locks. Update if the locks change.
     // The percentage shown next to it is computed against live supply.
@@ -90,11 +92,17 @@
     return Math.round(n).toLocaleString('en-US');
   }
 
+  // toFixed always leaves a decimal point, so trailing zeros can be trimmed
+  // wholesale: 6.90 -> 6.9, 7.00 -> 7, while 10 stays 10.
+  function trimZeros(fixed) {
+    return fixed.indexOf('.') === -1 ? fixed : fixed.replace(/\.?0+$/, '');
+  }
+
   function fmtCompact(n) {
     if (!isNum(n)) return '—';
-    if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.00$/, '') + 'B';
-    if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.00$/, '') + 'M';
-    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+    if (n >= 1e9) return trimZeros((n / 1e9).toFixed(2)) + 'B';
+    if (n >= 1e6) return trimZeros((n / 1e6).toFixed(2)) + 'M';
+    if (n >= 1e3) return trimZeros((n / 1e3).toFixed(1)) + 'K';
     return String(Math.round(n));
   }
 
@@ -240,6 +248,8 @@
       (isNum(lockedPct) ? ' · ' + lockedPct.toFixed(1) + '%' : ''));
 
     setField('burnPct', pct.toFixed(2) + '% there');
+    setField('launchLabel', 'Launch · ' + fmtCompact(CONFIG.launchSupply));
+    setField('goalLabel', 'Goal · ' + fmtCompact(CONFIG.burnGoal));
 
     var fill = $('[data-bar-fill]');
     var rider = $('[data-bar-rider]');

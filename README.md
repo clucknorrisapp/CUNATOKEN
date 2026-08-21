@@ -100,9 +100,12 @@ Everything you'd want to change lives in the `CONFIG` block at the top of
   button and the live balance sitting in it.
 - **`lockedApprox`** — amount locked in Jupiter locks. The percentage beside it
   is computed against live supply, so it stays honest as supply burns down.
-- **`launchSupply`** — a fixed launch-time constant (10B) used *only* to size
-  the burn progress bar. It is not live data. Burn progress is
-  `(launchSupply − liveSupply) / (launchSupply − burnGoal)`.
+- **`launchSupply`** — the actual supply at launch (13,659,767,778.871345),
+  used *only* to size the burn progress bar. It is a fixed historical
+  constant, not live data; the supply it is measured against always is. Burn
+  progress is `(launchSupply − liveSupply) / (launchSupply − burnGoal)`, and
+  the bar's end labels are rendered from these two values so they cannot drift
+  away from the maths.
 - **`burnGoal`** — the 6.9B target.
 
 The mint and pool addresses are also in `CONFIG`; the buy link, chart link and

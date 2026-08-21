@@ -443,7 +443,7 @@ a { color: var(--pink-3); }
 
 /* ─────────────── stat grid ─────────────── */
 
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1rem; }
 .stat { text-align: center; padding: 1.2rem 1rem; }
 .stat-label { display: block; font-size: .72rem; letter-spacing: .13em; text-transform: uppercase; color: var(--pink-3); font-weight: 800; margin-bottom: .3rem; }
 .stat-value {
@@ -452,6 +452,28 @@ a { color: var(--pink-3); }
   -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill;
 }
 .stat-foot { text-align: center; }
+
+/* A sub-cent price is by far the longest figure on the page — around twice
+   the characters of any other — and this display face has very wide digits.
+   Left at the shared size it grew straight out of its card and into the one
+   next to it, so it gets its own scale and tighter tracking. */
+.stat-value[data-field="price"] {
+  font-size: clamp(1.05rem, 2.3vw, 1.7rem);
+  letter-spacing: .005em;
+}
+.chip-value[data-field="price"] {
+  font-size: 1.05rem;
+  letter-spacing: .005em;
+}
+
+/* Belt and braces: a value can shrink and, in the worst case, break rather
+   than overlap the card beside it. */
+.stat, .chip { min-width: 0; }
+.stat-value, .chip-value, .mini-value {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
 
 /* The display face sets numerals tight enough that commas touch digits.
    Every element that shows a live number gets a little air. */
@@ -635,6 +657,12 @@ a { color: var(--pink-3); }
 .footer-fine { margin: 0 auto; max-width: 62ch; font-size: .82rem; color: var(--pink-3); font-weight: 600; line-height: 1.5; }
 
 /* ─────────────── narrow screens ─────────────── */
+
+@media (max-width: 660px) {
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-value { font-size: clamp(1.1rem, 4.4vw, 1.6rem); }
+  .stat-value[data-field="price"] { font-size: clamp(.82rem, 3.5vw, 1.15rem); }
+}
 
 @media (max-width: 480px) {
   .bar-legend { font-size: .68rem; gap: .5rem; }
