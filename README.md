@@ -249,18 +249,29 @@ and the copy is written to keep it that way.
 Canvas 2D, no libraries, no build step, no image assets: every sprite is drawn
 in code. Three of them are worth knowing about:
 
-- `drawMouth` is the player — two lip halves hinged at the back corner and
-  rotated apart by `open`, which is the same trick that makes any Pac-Man read
-  as a Pac-Man. The tongue is drawn underneath in a *lighter* pink than the
-  lips; at the same pink the two merge into one blob at maze scale. Teeth only
-  appear at tile >= 22px, because below that they swamp the lips and the
-  character reads as a white smear.
-- Pellets are half-disc tacos with a filling strip, still batched into two
-  Path2Ds and two fills a frame. Below 14px the filling is dropped and they
-  read as warm dots, which is the right call at that size.
-- `drawLoadedTaco` is the energizer — deliberately the same cream-and-pink
-  taco as the pellets, just bigger and garnished. The pink mascot taco was
-  tried here first and read as a second copy of the player. `assets/game.js` is one IIFE and uses modern syntax, unlike
+- `drawMouth` is the player: a dark mouth cavity, then the tongue, then two
+  fat lip halves hinged at the back corner and rotated apart by `open` — the
+  same trick that makes any Pac-Man read as a Pac-Man. Gradient body, white
+  teeth clipped inside the upper lip only, and a single soft specular streak
+  per lip.
+
+  Three numbers here were tuned by looking at it on screen and are easy to
+  wreck: the lips are deliberately FAT (peak bulge 0.76), because thin lens
+  shapes leave the character mostly dark cavity at maze scale; the highlights
+  sit at 0.34 alpha, because at 0.72 they wash the lips to a pale wedge; and
+  the tongue is a lighter pink than the lips, because at the same pink the two
+  merge into one blob.
+
+- Pellets are half-disc tacos — shell gradient, filling band, one offset
+  garnish speck — batched into three Path2Ds, so the whole board is three
+  fills a frame however many are left. Detail drops by size: no filling under
+  13px, no speck under 18px, no outline under 19px. The speck is deliberately
+  a single offset dot: a symmetrical pair above the filling stripe reads as
+  two eyes over a mouth and turns every pellet into a tiny face.
+
+- `drawLoadedTaco` is the energizer — the winking taco character from the
+  brand art, with a loaded filling edge, shell speckles and a face. Only four
+  on the board, so it can afford detail the pellets cannot. `assets/game.js` is one IIFE and uses modern syntax, unlike
 `assets/app.js` which is deliberately ES5-style.
 
 **Controls.** Desktop: arrows or WASD, P to pause, M to mute, Space/Enter to

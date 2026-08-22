@@ -8,6 +8,7 @@
 
   var C = {
     ink: '#24040f', plum: '#3d0a26', plum2: '#520f33', plum3: '#6b1444',
+    mouthDark: '#2b0512',
     pink: '#ff2e88', pink2: '#ff5fa2', pink3: '#ff8fc0', pinkDeep: '#c2185b',
     floor: '#320820',
     cream: '#ffeccb', cream2: '#fff7e6', mint: '#14f195', red: '#ff5c5c'
@@ -142,7 +143,7 @@
 
   const pellets = new Uint8Array(COLS * ROWS); /* 1 = taco, 2 = loaded taco */
   let pelletsLeft = 0;
-  let pelletPath = null, fillingPath = null, pelletDirty = true;
+  let pelletPath = null, fillingPath = null, garnishPath = null, pelletDirty = true;
 
   function resetPellets() {
     pelletsLeft = 0;
@@ -218,7 +219,7 @@
 
     prerenderMaze();
     placeSticks();
-    if (changed) pelletDirty = true;
+    if (changed) { pelletDirty = true; shellGrad = null; bigShellGrad = null; }
   }
 
   function prerenderMaze() {
@@ -315,33 +316,13 @@
      once as an ink silhouette 3px lower, once for real. Shadows for a whole
      layer go down first so they never stack on each other. */
 
-  let tacoGrad = null, lipGrad = null;
+  let lipGrad = null, tongueGrad = null, shellGrad = null, bigShellGrad = null;
 
   /* Two shell halves hinged at the BACK TIP, not the centre. A centre pivot
      leaves a notch behind the hinge and strokes both fold edges into an X
      across the face; hinging at the tip makes the fold edges meet in a single
-     V that reads as the mouth, and the closed shape is a fat taco lens. */
-  function shellHalf(g, s) {
-    g.moveTo(-1.0, 0);
-    g.quadraticCurveTo(-0.60, s * 1.16, 0.26, s * 0.88);
-    g.quadraticCurveTo(0.88, s * 0.74, 1.03, s * 0.12);
-    g.quadraticCurveTo(1.07, s * 0.02, 1.0, 0);
-    g.closePath();
-  }
-  function buildTaco(g, open) {
-    g.beginPath();
-    for (let k = 0; k < 2; k++) {
-      const s = k ? -1 : 1;
-      g.save();
-      g.translate(-1.0, 0); g.rotate(s * open); g.translate(1.0, 0);
-      shellHalf(g, s);
-      g.restore();
-    }
-  }
-
   /* ── the player: lips and tongue ──────────────────────────────────────
-     Same signature and options as drawTaco, so the life icons and the title
-     card get the new character for free.
+     Serves the player, the life icons and the title card.
 
      The chomp is two lip halves hinged at the back corner of the mouth,
      rotating apart by `open` — the same trick the taco shell used, which is
@@ -349,13 +330,15 @@
      lolls further out in TONGUE OUT mode.                                  */
 
   function lipHalf(g, s) {
-    /* One lip, drawn nose-to-corner. s = +1 lower, -1 upper. The cupid's-bow
-       dip on the upper lip is what stops it reading as a plain crescent. */
+    /* One lip, drawn corner-to-corner. s = +1 lower, -1 upper. The cupid's-bow
+       dip on the upper lip is what stops it reading as a plain crescent.
+       Deliberately FAT: thin lens shapes left the character mostly dark mouth
+       cavity at maze scale, where the reference art is mostly lip. */
     g.moveTo(-1.0, 0);
-    g.quadraticCurveTo(-0.62, s * 0.30, -0.16, s * 0.42);
-    g.quadraticCurveTo(0.10, s * 0.50, 0.44, s * 0.40);
-    g.quadraticCurveTo(0.86, s * 0.26, 1.02, s * 0.05);
-    g.quadraticCurveTo(1.06, s * 0.01, 1.0, 0);
+    g.quadraticCurveTo(-0.70, s * 0.46, -0.20, s * 0.64);
+    g.quadraticCurveTo(0.10, s * 0.76, 0.46, s * 0.60);
+    g.quadraticCurveTo(0.88, s * 0.40, 1.02, s * 0.06);
+    g.quadraticCurveTo(1.07, s * 0.01, 1.0, 0);
     g.closePath();
   }
 
@@ -373,11 +356,12 @@
   function drawMouth(g, px, py, dir, open, opt) {
     opt = opt || {};
     const T = opt.tile || TILE;
-    const r = T * 0.50;
-    const LW = Math.max(2, Math.min(3, T * 0.13));
+    const r = T * 0.52;
+    const LW = Math.max(2, Math.min(3.4, T * 0.14));
     const closed = 1 - Math.min(1, open / MAX_OPEN);
     const shadow = !!opt.shadow;
     const spin = opt.spin || 0, shrink = opt.shrink == null ? 1 : opt.shrink;
+    const detail = T >= 17;
 
     g.save();
     g.translate(px, py + (shadow ? 3 : 0));
@@ -389,190 +373,117 @@
     else if (dir === DOWN) g.rotate(Math.PI / 2);
     g.scale(r, r);
     g.lineWidth = LW / r;
-    if (!shadow && !RM) g.scale(1 + 0.10 * closed, 1 - 0.10 * closed);
+    if (!shadow && !RM) g.scale(1 + 0.09 * closed, 1 - 0.09 * closed);
 
-    /* Tongue first, so the lips close over it. Always present — it is the
-       whole point of the character — and it reaches further in TONGUE OUT. */
-    if (!shadow) {
-      const reach = opt.tongue ? 1.5 : 0.92;
-      const tw = 0.60;
-      g.save();
-      /* A lighter pink than the lips, or the two merge into one blob at
-         maze scale and the character stops reading. */
-      g.fillStyle = C.pink3; g.strokeStyle = C.ink; g.lineWidth = LW / r;
-      g.beginPath();
-      if (g.roundRect) g.roundRect(-0.30, -tw / 2, reach, tw, tw / 2);
-      else g.rect(-0.30, -tw / 2, reach, tw);
-      g.fill(); g.stroke();
-      /* centre crease sells "tongue" rather than "pink tab" */
-      g.strokeStyle = C.pinkDeep; g.lineWidth = Math.max(1.4, LW * 0.6) / r; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(-0.05, 0); g.lineTo(reach - 0.34, 0); g.stroke();
-      g.restore();
-    }
-
-    buildMouth(g, open);
     if (shadow) {
+      buildMouth(g, open);
       g.fillStyle = C.ink; g.fill();
       g.restore(); g.restore();
       return;
     }
 
-    if (!lipGrad) {
-      lipGrad = g.createLinearGradient(-1, -1.1, 1, 1.1);
-      lipGrad.addColorStop(0, C.pink2);
-      lipGrad.addColorStop(1, C.pinkDeep);
-    }
-    g.fillStyle = lipGrad; g.fill();
-
-    /* Teeth: a bright band just inside each lip, clipped to that lip so the
-       two halves never scissor across the open mouth. Only worth it once the
-       tile is big enough for them to be more than a smear. */
-    if (T >= 22) {
-      for (let k = 0; k < 2; k++) {
-        const s = k ? -1 : 1;
-        g.save();
-        g.translate(-1.0, 0); g.rotate(s * open); g.translate(1.0, 0);
-        g.beginPath(); lipHalf(g, s); g.clip();
-        g.fillStyle = C.cream2;
-        g.beginPath();
-        g.moveTo(-0.55, s * 0.03);
-        g.quadraticCurveTo(0.10, s * 0.22, 0.80, s * 0.03);
-        g.lineTo(0.80, s * 0.10);
-        g.quadraticCurveTo(0.10, s * 0.29, -0.55, s * 0.09);
-        g.closePath(); g.fill();
-        g.restore();
-      }
+    /* 1. Mouth cavity. A dark wedge behind the lips, so an open mouth reads as
+          a mouth rather than as a gap with the maze showing through. */
+    if (open > 0.02) {
+      g.save();
+      g.beginPath();
+      g.moveTo(-0.55, 0);
+      g.arc(-0.55, 0, 1.62, -open * 1.02, open * 1.02);
+      g.closePath();
+      g.fillStyle = C.mouthDark; g.fill();
+      g.restore();
     }
 
-    /* gloss highlight on the upper lip, and the wink */
-    g.fillStyle = C.cream2;
-    g.globalAlpha = 0.85;
-    g.beginPath(); g.ellipse(-0.30, -0.30 - open * 0.6, 0.26, 0.12, -0.35, 0, 6.2832); g.fill();
-    g.globalAlpha = 1;
-
-    buildMouth(g, open);
-    g.strokeStyle = C.ink; g.lineWidth = LW / r; g.lineJoin = 'round'; g.lineCap = 'round';
-    g.stroke();
+    /* 2. Tongue, sitting in the cavity and lolling out of the lower lip. */
+    const reach = opt.tongue ? 1.62 : 1.02;
+    const tw = 0.66;
+    g.save();
+    g.translate(0, 0.13);
+    if (!tongueGrad) {
+      tongueGrad = g.createLinearGradient(0, -tw / 2, 0, tw / 2);
+      tongueGrad.addColorStop(0, C.pink2);
+      tongueGrad.addColorStop(0.55, C.pink3);
+      tongueGrad.addColorStop(1, C.pinkDeep);
+    }
+    g.beginPath();
+    if (g.roundRect) g.roundRect(-0.44, -tw / 2, reach + 0.44, tw, tw / 2);
+    else g.rect(-0.44, -tw / 2, reach + 0.44, tw);
+    g.fillStyle = tongueGrad; g.fill();
+    g.strokeStyle = C.ink; g.lineWidth = LW / r; g.stroke();
+    if (detail) {
+      /* centre crease + two gloss blobs — the thing that says "wet" */
+      g.strokeStyle = 'rgba(120,10,60,.55)'; g.lineWidth = Math.max(1.3, LW * 0.5) / r; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(-0.12, 0); g.lineTo(reach - 0.30, 0); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,.40)';
+      g.beginPath(); g.ellipse(reach * 0.55, -0.15, reach * 0.17, 0.06, -0.10, 0, 6.2832); g.fill();
+    }
     g.restore();
 
-    /* The wink sits in screen space, never rotated, so the character never
-       reads upside-down travelling left. */
-    if (!shadow && T >= 14) {
+    /* 3. Lips, one half at a time: gradient body, teeth clipped inside the
+          upper, then a specular streak along the outer curve. */
+    if (!lipGrad) {
+      lipGrad = g.createLinearGradient(0, -1.1, 0, 1.1);
+      lipGrad.addColorStop(0, '#ff4f97');
+      lipGrad.addColorStop(0.45, C.pink);
+      lipGrad.addColorStop(1, '#a01050');
+    }
+    for (let k = 0; k < 2; k++) {
+      const sd = k ? -1 : 1;
+      g.save();
+      g.translate(-1.0, 0); g.rotate(sd * open); g.translate(1.0, 0);
+
+      g.beginPath(); lipHalf(g, sd);
+      g.fillStyle = lipGrad; g.fill();
+
+      g.save();
+      g.beginPath(); lipHalf(g, sd); g.clip();
+
+      /* teeth ride the upper lip only, as in the art */
+      if (detail && sd < 0) {
+        g.fillStyle = C.cream2;
+        g.beginPath();
+        g.moveTo(-0.52, 0.02);
+        g.quadraticCurveTo(0.12, -0.26, 0.84, 0.02);
+        g.lineTo(0.84, -0.17);
+        g.quadraticCurveTo(0.12, -0.46, -0.52, -0.15);
+        g.closePath(); g.fill();
+        if (T >= 24) {
+          g.strokeStyle = 'rgba(120,10,60,.35)'; g.lineWidth = 1.1 / r;
+          for (let i = -1; i <= 1; i++) {
+            const tx = 0.14 + i * 0.30;
+            g.beginPath(); g.moveTo(tx, -0.05); g.lineTo(tx + 0.03, -0.24); g.stroke();
+          }
+        }
+      }
+
+      /* specular streak — the single thing that reads as "glossy" */
+      if (detail) {
+        g.fillStyle = 'rgba(255,255,255,.34)';
+        g.beginPath();
+        g.ellipse(-0.16, sd * 0.44, 0.34, sd > 0 ? 0.070 : 0.080, sd > 0 ? 0.18 : -0.18, 0, 6.2832);
+        g.fill();
+      }
+      g.restore();
+
+      g.beginPath(); lipHalf(g, sd);
+      g.strokeStyle = C.ink; g.lineWidth = LW / r; g.lineJoin = 'round'; g.stroke();
+      g.restore();
+    }
+    g.restore();
+
+    /* Wink sits in screen space so the face never reads upside-down. */
+    if (T >= 15) {
       g.save();
       g.scale(r, r);
-      g.strokeStyle = C.ink; g.lineWidth = Math.max(1.6, LW * 0.75) / r; g.lineCap = 'round';
+      g.strokeStyle = C.ink; g.lineWidth = Math.max(1.7, LW * 0.8) / r; g.lineCap = 'round';
       g.beginPath();
-      if (opt.wink) { g.moveTo(-0.34, -0.86); g.quadraticCurveTo(-0.16, -0.70, 0.02, -0.86); }
-      else { g.moveTo(-0.16, -0.94); g.lineTo(-0.16, -0.72); }
+      if (opt.wink) { g.moveTo(-0.36, -0.92); g.quadraticCurveTo(-0.17, -0.74, 0.02, -0.92); }
+      else { g.moveTo(-0.17, -1.00); g.lineTo(-0.17, -0.76); }
       g.stroke();
       g.restore();
     }
     g.restore();
   }
-
-  /* one function serves the player, the life icons and the title card */
-  function drawTaco(g, px, py, dir, open, opt) {
-    opt = opt || {};
-    const T = opt.tile || TILE;
-    const r = T * 0.48;
-    const LW = Math.max(2, Math.min(3, T * 0.13));
-    const closed = 1 - Math.min(1, open / MAX_OPEN);
-    const shadow = !!opt.shadow;
-    const spin = opt.spin || 0, shrink = opt.shrink == null ? 1 : opt.shrink;
-
-    g.save();
-    g.translate(px, py + (shadow ? 3 : 0));
-    if (spin) g.rotate(spin);
-    if (shrink !== 1) g.scale(shrink, shrink);
-    g.save();
-    if (dir === LEFT) g.scale(-1, 1);
-    else if (dir === UP) g.rotate(-Math.PI / 2);
-    else if (dir === DOWN) g.rotate(Math.PI / 2);
-    g.scale(r, r);
-    g.lineWidth = LW / r;
-    if (!shadow && !RM) g.scale(1 + 0.12 * closed, 1 - 0.12 * closed);
-
-    if (opt.tongue && !shadow) {
-      /* tongue rides in the rotated frame, under the shell */
-      g.save();
-      g.fillStyle = C.pink2; g.strokeStyle = C.ink; g.lineWidth = LW / r;
-      const tw = 0.34 / 0.46, tl = 0.62 / 0.46;
-      g.beginPath();
-      if (g.roundRect) g.roundRect(-0.1, -tw / 2, tl, tw, tw / 2);
-      else g.rect(-0.1, -tw / 2, tl, tw);
-      g.fill(); g.stroke();
-      g.strokeStyle = C.plum3; g.lineWidth = 2 / r; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(0.2, 0); g.lineTo(tl - 0.28, 0); g.stroke();
-      g.restore();
-    }
-
-    buildTaco(g, open);
-    if (shadow) {
-      g.fillStyle = C.ink; g.fill();
-      g.restore(); g.restore();
-      return;
-    }
-    if (!tacoGrad) {
-      tacoGrad = g.createLinearGradient(-1, -1.1, 1, 1.1);
-      tacoGrad.addColorStop(0, C.pink2);
-      tacoGrad.addColorStop(1, C.pinkDeep);
-    }
-    g.fillStyle = tacoGrad; g.fill();
-
-    /* fold edge + tortilla scallops, clipped inside their own half so the
-       two halves never scissor a dark X across the middle */
-    for (let k = 0; k < 2; k++) {
-      const s = k ? -1 : 1;
-      g.save();
-      g.translate(-1.0, 0); g.rotate(s * open); g.translate(1.0, 0);
-      g.beginPath(); shellHalf(g, s); g.clip();
-      g.strokeStyle = C.plum3; g.lineWidth = (LW - 0.6) / r; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(-0.9, s * 0.06); g.lineTo(1.02, s * 0.06); g.stroke();
-      if (T >= 18) {
-        g.lineWidth = 1.8 / r;
-        g.beginPath();
-        for (let i = 0; i < 3; i++) {
-          const sx = -0.3 + i * 0.5;
-          g.moveTo(sx - 0.18, s * 0.08);
-          g.quadraticCurveTo(sx, s * 0.36, sx + 0.18, s * 0.08);
-        }
-        g.stroke();
-      }
-      g.restore();
-    }
-    g.fillStyle = C.cream2;
-    g.beginPath(); g.arc(0.46, 0.20, 0.15, 0, 6.2832); g.fill();
-    g.fillStyle = C.mint;
-    g.beginPath(); g.arc(0.44, -0.20, 0.15, 0, 6.2832); g.fill();
-
-    buildTaco(g, open);
-    g.strokeStyle = C.ink; g.lineWidth = LW / r; g.lineJoin = 'round'; g.lineCap = 'round';
-    g.stroke();
-    g.restore();
-
-    /* Billboard the face. The wink is the brand — it must never rotate. */
-    const sx = dir === LEFT ? -1 : 1;
-    const ex = 0.02 * r * sx, ey = -0.53 * r;
-    const eyeR = Math.max(2.6, 0.095 * T);
-    if (opt.fright) {
-      g.strokeStyle = C.ink; g.lineWidth = LW; g.lineCap = 'round'; g.lineJoin = 'round';
-      g.beginPath();
-      g.moveTo(ex - eyeR * 1.1, ey + eyeR * 0.6); g.lineTo(ex, ey - eyeR * 0.6);
-      g.lineTo(ex + eyeR * 1.1, ey + eyeR * 0.6); g.stroke();
-    } else if (opt.wink) {
-      g.strokeStyle = C.ink; g.lineWidth = LW; g.lineCap = 'round';
-      g.beginPath(); g.arc(ex, ey, 0.16 * r, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
-      g.beginPath(); g.moveTo(ex + 0.13 * r * sx, ey); g.quadraticCurveTo(ex + 0.22 * r * sx, ey - 0.02 * r, ex + 0.2 * r * sx, ey - 0.1 * r); g.stroke();
-    } else {
-      /* cream sclera, ink pupil — an all-ink eye vanishes into the shell */
-      g.fillStyle = C.cream2; g.strokeStyle = C.ink; g.lineWidth = Math.max(1.5, LW - 1);
-      g.beginPath(); g.arc(ex, ey, eyeR, 0, 6.2832); g.fill(); g.stroke();
-      g.fillStyle = C.ink;
-      g.beginPath(); g.arc(ex + eyeR * 0.22 * sx, ey + eyeR * 0.1, eyeR * 0.5, 0, 6.2832); g.fill();
-    }
-    g.restore();
-  }
-
   /* ── chasers ── */
 
   function bodyPath(g, kind, cx, cy, T, hemPh) {
@@ -760,34 +671,72 @@
      it plainly reads as "the big one" rather than as a second character. The
      pink mascot taco was tried here first and looked too much like the
      player's lips at maze scale. */
+  /* The energizer: the winking taco from the brand art, in full. Shell with a
+     speckled gradient, a loaded filling edge, and a face. Only four on the
+     board and they are the biggest edible on it, so it can afford the detail
+     the pellets cannot. */
   function drawLoadedTaco(g, cx, cy, T, s) {
-    const r = 0.40 * T * s;
-    g.save();
-    g.translate(cx, cy + r * 0.22);
-    g.lineJoin = 'round'; g.lineCap = 'round';
+    const R = 0.46 * T * s;
     const LW = Math.max(2, Math.min(3, T * 0.11));
+    const detail = T >= 16;
+    g.save();
+    g.translate(cx, cy + R * 0.16);
+    g.lineJoin = 'round'; g.lineCap = 'round';
 
     /* shell */
+    if (!bigShellGrad) {
+      bigShellGrad = g.createLinearGradient(0, -R, 0, R);
+      bigShellGrad.addColorStop(0, C.pink2);
+      bigShellGrad.addColorStop(0.55, C.pink);
+      bigShellGrad.addColorStop(1, C.pinkDeep);
+    }
     g.beginPath();
-    g.moveTo(-r, 0); g.arc(0, 0, r, Math.PI, 0, true); g.closePath();
-    g.fillStyle = C.cream; g.fill();
+    g.moveTo(-R, 0); g.arc(0, 0, R, Math.PI, 0, true); g.closePath();
+    g.fillStyle = bigShellGrad; g.fill();
+
+    /* filling along the top edge — the cubes and bits, abstracted to dots */
+    g.save();
+    g.beginPath(); g.moveTo(-R, 0); g.arc(0, 0, R, Math.PI, 0, true); g.closePath(); g.clip();
+    g.fillStyle = C.cream;
+    g.beginPath(); g.rect(-R, -R * 0.20, R * 2, R * 0.22); g.fill();
+    if (detail) {
+      const bits = [[-0.62, -0.30, C.mint], [-0.30, -0.42, C.cream2], [0.02, -0.34, '#ff8a3d'],
+                    [0.34, -0.44, C.mint], [0.64, -0.30, '#ff8a3d']];
+      for (let i = 0; i < bits.length; i++) {
+        g.fillStyle = bits[i][2];
+        g.beginPath(); g.arc(bits[i][0] * R, bits[i][1] * R, R * 0.15, 0, 6.2832); g.fill();
+      }
+    }
+    /* shell speckles */
+    if (T >= 20) {
+      g.fillStyle = 'rgba(120,10,60,.35)';
+      const sp = [[-0.45, 0.34], [-0.10, 0.52], [0.26, 0.30], [0.52, 0.52], [0.06, 0.16]];
+      for (let i = 0; i < sp.length; i++) {
+        g.beginPath(); g.arc(sp[i][0] * R, sp[i][1] * R, R * 0.055, 0, 6.2832); g.fill();
+      }
+    }
+    g.restore();
+
+    g.beginPath();
+    g.moveTo(-R, 0); g.arc(0, 0, R, Math.PI, 0, true); g.closePath();
     g.strokeStyle = C.ink; g.lineWidth = LW; g.stroke();
 
-    /* filling, sitting just under the flat top edge */
-    const fr = r * 0.76;
-    g.beginPath();
-    g.moveTo(-fr, -r * 0.10); g.arc(0, -r * 0.10, fr, Math.PI, 0, true); g.closePath();
-    g.fillStyle = C.pink; g.fill();
-
-    /* garnish — two dots is all that survives at this size */
-    g.fillStyle = C.mint;
-    g.beginPath(); g.arc(-fr * 0.42, -r * 0.28, r * 0.15, 0, 6.2832); g.fill();
-    g.fillStyle = C.cream2;
-    g.beginPath(); g.arc(fr * 0.40, -r * 0.24, r * 0.13, 0, 6.2832); g.fill();
-
+    /* face: open eye, wink, grin with a tongue tip */
+    if (detail) {
+      g.fillStyle = C.cream2;
+      g.beginPath(); g.arc(-R * 0.20, R * 0.34, R * 0.13, 0, 6.2832); g.fill();
+      g.fillStyle = C.ink;
+      g.beginPath(); g.arc(-R * 0.20, R * 0.34, R * 0.07, 0, 6.2832); g.fill();
+      g.strokeStyle = C.ink; g.lineWidth = Math.max(1.4, LW * 0.6); g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(R * 0.24, R * 0.30); g.quadraticCurveTo(R * 0.38, R * 0.42, R * 0.52, R * 0.30);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(-R * 0.02, R * 0.60); g.quadraticCurveTo(R * 0.18, R * 0.74, R * 0.36, R * 0.58);
+      g.stroke();
+    }
     g.restore();
   }
-
   function drawSideOrder(g, cx, cy, T, course) {
     const k = course <= 2 ? 0 : course <= 4 ? 1 : course <= 6 ? 2 : 3;
     g.save();
@@ -1266,22 +1215,34 @@
      filling strip along that edge. Still two batched Path2Ds and two fills a
      frame — the shape changed, the cost did not. Below ~14px the filling is
      dropped and it reads as a warm dot, which is the right call at that size. */
+  /* Pellet tacos. Three batched Path2Ds — shell, filling, garnish — so the
+     whole board is still three fills a frame however many are left. Detail
+     drops out by size: under 14px it is a warm dot, over 18px it gets specks. */
   function pelletBuild() {
     pelletPath = new Path2D();
     fillingPath = new Path2D();
-    const r = Math.max(2, 0.17 * TILE);
-    const showFilling = TILE >= 14;
+    garnishPath = new Path2D();
+    const r = Math.max(2, 0.19 * TILE);
+    const showFilling = TILE >= 13;
+    const showGarnish = TILE >= 18;
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (pellets[x + y * COLS] !== 1) continue;
-      const cx = (x + 0.5) * TILE, cy = (y + 0.5) * TILE + r * 0.30;
+      const cx = (x + 0.5) * TILE, cy = (y + 0.5) * TILE + r * 0.28;
       pelletPath.moveTo(cx - r, cy);
       pelletPath.arc(cx, cy, r, Math.PI, 0, true);
       pelletPath.closePath();
       if (showFilling) {
-        const fr = r * 0.74, fy = cy - r * 0.18;
+        const fr = r * 0.78, fy = cy - r * 0.14;
         fillingPath.moveTo(cx - fr, fy);
         fillingPath.arc(cx, fy, fr, Math.PI, 0, true);
         fillingPath.closePath();
+      }
+      if (showGarnish) {
+        /* Kept inside the filling band and offset, never a symmetrical pair
+           above the shell — two dots over a stripe read as a face. */
+        const gr = Math.max(0.8, r * 0.15);
+        garnishPath.moveTo(cx - r * 0.22 + gr, cy - r * 0.22);
+        garnishPath.arc(cx - r * 0.22, cy - r * 0.22, gr, 0, 6.2832);
       }
     }
     pelletDirty = false;
@@ -1306,10 +1267,16 @@
 
     /* pellets — one batched path, one fill */
     if (pelletDirty) pelletBuild();
-    g.fillStyle = C.cream;
+    if (!shellGrad) {
+      shellGrad = g.createLinearGradient(0, 0, 0, T * 1.2);
+      shellGrad.addColorStop(0, C.cream2);
+      shellGrad.addColorStop(1, '#e8b877');
+    }
+    g.fillStyle = shellGrad;
     g.fill(pelletPath);
-    if (T >= 14) { g.fillStyle = C.pink; g.fill(fillingPath); }
-    if (T >= 20) { g.strokeStyle = C.ink; g.lineWidth = 1; g.stroke(pelletPath); }
+    if (T >= 13) { g.fillStyle = C.pink; g.fill(fillingPath); }
+    if (T >= 18) { g.fillStyle = C.mint; g.fill(garnishPath); }
+    if (T >= 19) { g.strokeStyle = C.ink; g.lineWidth = 1.2; g.stroke(pelletPath); }
 
     /* Energizers: a full loaded taco, pulsing. The lips used to play this
        part, but the lips are the player now — so the big one on the board is
