@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MUNCHALINGUS — the $CUNA chart-eating game</title>
+<meta name="description" content="MUNCHALINGUS: a little maze game where you are the CUNALINGUS taco and the chart is dinner. Plays in the browser, on a phone or a keyboard, and pays out in calories.">
+<meta name="theme-color" content="#3D0A26">
+<link rel="icon" href="assets/logo.jpg">
+<link rel="apple-touch-icon" href="assets/logo.jpg">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="MUNCHALINGUS">
+<meta property="og:description" content="The chart is the maze. You're the taco. Eat every bid.">
+<meta property="og:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MUNCHALINGUS">
+<meta name="twitter:description" content="The chart is the maze. You're the taco. Eat every bid.">
+<meta name="twitter:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/game.css">
+
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="bg" aria-hidden="true"
+     style="background:radial-gradient(120% 90% at 50% -10%, var(--plum-3), var(--plum) 45%, var(--ink));"></div>
+
+<header class="nav">
+  <a class="nav-brand" href="index.html">
+    <img src="assets/logo.jpg" alt="" width="44" height="44">
+    <span>CUNA</span>
+  </a>
+  <div class="nav-social" data-nav-social>
+    <a class="social-btn" data-social="telegram" href="https://t.me/cunaonsol"
+       target="_blank" rel="noopener" aria-label="$CUNA on Telegram">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+    </a>
+    <a class="social-btn" data-social="x" href="https://x.com/cunatoken"
+       target="_blank" rel="noopener" aria-label="$CUNA on X">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+    </a>
+  </div>
+  <nav class="nav-links" aria-label="Sections">
+    <a href="index.html#burn">Burn</a>
+    <a href="index.html#bag">Your bag</a>
+    <a href="index.html#stats">Stats</a>
+    <a href="game.html" aria-current="page">Game</a>
+    <a href="index.html#community">Community</a>
+  </nav>
+  <a class="btn btn-buy btn-sm" href="buy.html">Buy <span class="nav-buy-ticker">$CUNA</span></a>
+</header>
+
+<main id="main">
+  <section class="section">
+
+    <div class="section-head">
+      <p class="hero-kicker">gonna eat that chart</p>
+      <h1 class="section-title">MUNCHALINGUS</h1>
+      <p class="section-sub">The chart is the maze. You're the taco. Eat every bid in the book before the exit liquidity catches you.</p>
+    </div>
+
+    <section id="cuna-game" class="cg" role="application"
+             aria-label="MUNCHALINGUS, a maze game" aria-describedby="cg-help" tabindex="0">
+      <p id="cg-help" class="cg-sr">MUNCHALINGUS is a maze game. You steer a taco around a maze built out of candlesticks, eating every bid while four chasers hunt you. On a phone, drag either of the two on-screen sticks — both do the same thing. On a keyboard, use the arrow keys or W A S D. P pauses, M toggles sound, and Space starts or restarts. It is a toy and it awards nothing but calories, which are not real.</p>
+      <span class="cg-probe" id="cg-probe" aria-hidden="true"></span>
+
+      <div class="cg-hud" id="cg-hud">
+        <div class="cg-stat"><span>Calories</span><strong id="cg-score">0</strong></div>
+        <div class="cg-stat"><span>Best</span><strong id="cg-best">0</strong></div>
+        <div class="cg-stat"><span>Course</span><strong id="cg-course">1</strong></div>
+        <div class="cg-lives" id="cg-lives" aria-label="Tacos left"></div>
+        <button class="cg-icon is-muted" id="cg-sound" type="button" aria-pressed="false" aria-label="Sound off">♪</button>
+        <button class="cg-icon" id="cg-pause" type="button" aria-label="Pause">❚❚</button>
+      </div>
+
+      <div class="cg-field" id="cg-field">
+        <canvas id="cg-canvas" aria-hidden="true"></canvas>
+        <p class="cg-toast" id="cg-toast" aria-hidden="true"></p>
+        <div class="cg-overlay" id="cg-overlay" hidden></div>
+      </div>
+
+      <div class="cg-gutter cg-gutter-l" id="cg-gutL">
+        <div class="cg-panel">
+          <h3>THE PLATE</h3>
+          <div class="cg-pcard">
+            <div class="cg-prow cg-prow-big"><span>Calories</span><strong id="cg-p-score">0</strong></div>
+            <div class="cg-prow"><span>Best</span><strong id="cg-p-best">0</strong></div>
+            <div class="cg-prow"><span>Course</span><strong id="cg-p-course">1</strong></div>
+            <div class="cg-prow"><span>Tacos</span><span class="cg-lives" id="cg-p-lives"></span></div>
+            <div class="cg-prow"><span>Bids left</span><strong id="cg-p-bids">212</strong></div>
+          </div>
+        </div>
+        <div class="cg-stick" data-side="l" aria-hidden="true">
+          <div class="cg-ring">
+            <i class="cg-chev cg-u"></i><i class="cg-chev cg-r"></i>
+            <i class="cg-chev cg-d"></i><i class="cg-chev cg-l"></i>
+            <div class="cg-nub"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cg-gutter cg-gutter-r" id="cg-gutR">
+        <div class="cg-panel">
+          <h3>THE EXIT LIQUIDITY</h3>
+          <div class="cg-pcard">
+            <ul class="cg-legend">
+              <li><canvas data-ch="0" aria-hidden="true"></canvas><div><b>JEET</b><p>Comes straight at you and never stops. The emptier the book gets, the faster he sells.</p></div></li>
+              <li><canvas data-ch="1" aria-hidden="true"></canvas><div><b>RUGGY</b><p>Aims four tiles ahead of you. He isn't chasing you, he's already there.</p></div></li>
+              <li><canvas data-ch="2" aria-hidden="true"></canvas><div><b>FUDD</b><p>Works out where you'll be, then doubles it. Nobody knows where he's going, including him.</p></div></li>
+              <li><canvas data-ch="3" aria-hidden="true"></canvas><div><b>PAPER</b><p>Chases you until you're close, then bottles it and runs home. Folds every single time.</p></div></li>
+            </ul>
+          </div>
+          <div class="cg-pcard">
+            <div class="cg-keys">
+              <kbd class="cg-key">↑</kbd><kbd class="cg-key">↓</kbd><kbd class="cg-key">←</kbd><kbd class="cg-key">→</kbd>
+              <kbd class="cg-key">W</kbd><kbd class="cg-key">A</kbd><kbd class="cg-key">S</kbd><kbd class="cg-key">D</kbd>
+              <kbd class="cg-key">P</kbd><kbd class="cg-key">M</kbd><kbd class="cg-key">SPACE</kbd>
+            </div>
+          </div>
+          <img class="cg-badge" src="assets/logo.jpg" alt="" width="58" height="58">
+          <p style="text-align:center;margin:0"><a class="btn btn-buy btn-sm" href="buy.html">Buy $CUNA</a></p>
+        </div>
+        <div class="cg-stick" data-side="r" aria-hidden="true">
+          <div class="cg-ring">
+            <i class="cg-chev cg-u"></i><i class="cg-chev cg-r"></i>
+            <i class="cg-chev cg-d"></i><i class="cg-chev cg-l"></i>
+            <div class="cg-nub"></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="cg-sr" id="cg-live" role="status" aria-live="polite"></p>
+    </section>
+
+    <p class="cg-underline" id="cg-hint">Arrows or WASD. P pauses. M is the sound. Space starts.</p>
+
+    <details class="card cg-legend-m">
+      <summary>Who's chasing you</summary>
+      <ul class="cg-legend">
+        <li><b>JEET</b><p>Comes straight at you and never stops. The emptier the book gets, the faster he sells.</p></li>
+        <li><b>RUGGY</b><p>Aims four tiles ahead of you. He isn't chasing you, he's already there.</p></li>
+        <li><b>FUDD</b><p>Works out where you'll be, then doubles it. Nobody knows where he's going, including him.</p></li>
+        <li><b>PAPER</b><p>Chases you until you're close, then bottles it and runs home. Folds every single time.</p></li>
+      </ul>
+    </details>
+
+    <p class="card cg-fineprint">It's a toy. It keeps score in calories, which are not withdrawable, transferable, tradeable or real. Playing it earns you nothing, and neither does reading this sentence. Nothing here is advice.</p>
+
+  </section>
+</main>
+
+<footer class="footer">
+  <img src="assets/logo.jpg" alt="" width="64" height="64" class="footer-mark">
+  <p class="footer-line">Not financial advice. Just degenerate advice.</p>
+  <p class="footer-fine">$CUNA is a meme coin with no utility, no roadmap and no promises. Buy it because it made you laugh, not because you expect anything from it. Live figures come from public APIs and can be wrong, stale, or briefly hilarious.</p>
+  <p class="footer-fine"><a href="index.html">← Back to the main page</a></p>
+</footer>
+
+<script src="assets/game.js"></script>
+</body>
+</html>

@@ -8,6 +8,9 @@ public APIs.
 index.html          main page: hero, burn tracker, bag checker, stats, community
 buy.html            the Jupiter swap widget, on its own so it can breathe
 safety.html         the long-form "is it safe?" answers
+game.html           MUNCHALINGUS, the arcade game
+assets/game.css     game-only styles (loaded after styles.css)
+assets/game.js      the whole game in one IIFE
 assets/styles.css   sticker-book styles, shared by all three pages
 assets/app.js       config + live data + interactions, shared by all three
 assets/logo.jpg     the coin art
@@ -231,6 +234,42 @@ Everything you'd want to change lives in the `CONFIG` block at the top of
 
 The mint and pool addresses are also in `CONFIG`; the buy link, chart link and
 Solscan link are all derived from the mint so there's one place to change it.
+
+## MUNCHALINGUS (game.html)
+
+A Pac-Man homage. The chart is the maze, the player is the taco, the pellets are
+bids in the order book, the power-up is the lips, and the four chasers are JEET
+(charges straight at you, faster as the book empties), RUGGY (aims four tiles
+ahead of you), FUDD (targets off JEET's position, so he is harmless alone and
+lethal in a pincer) and PAPER (chases until he is close, then bottles it).
+Score is CALORIES, never tokens — nothing in the game earns anyone anything,
+and the copy is written to keep it that way.
+
+Canvas 2D, no libraries, no build step, no image assets: every sprite is drawn
+in code. `assets/game.js` is one IIFE and uses modern syntax, unlike
+`assets/app.js` which is deliberately ES5-style.
+
+**Controls.** Desktop: arrows or WASD, P to pause, M to mute, Space/Enter to
+start. Mobile: twin virtual joysticks, one in each gutter, and **either one
+drives** — so left- and right-handers are both served and nobody reaches across
+the screen. A swipe on the playfield works too.
+
+Two things about the sticks are easy to break and worth knowing:
+
+- The direction vector is measured from **where the thumb landed** (`ox/oy`),
+  not from the ring's drawn centre (`cx/cy`). The ring is clamped so it never
+  renders half outside the gutter; measuring from the clamped centre meant a
+  thumb resting low — where thumbs actually rest — read as already pushed down
+  before it moved.
+- The portrait grid caps the thumb deck and centres the field in what is left.
+  The maze is width-bound in portrait, so leftover height is unavoidable slack;
+  the cap stops it pooling into a dead band between the maze and the sticks.
+  `layout()`'s `deck` constant must stay in step with the CSS deck row, or the
+  canvas can be sized taller than the grid leaves room for.
+
+A coarse-pointer device never switches to the desktop layout, even if a
+keyboard is attached — keyboard input works in touch layout anyway, and the
+three-column grid at 390px used to shove the maze off the side.
 
 ## Deploying on Railway
 

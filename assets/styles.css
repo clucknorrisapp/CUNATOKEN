@@ -127,7 +127,11 @@ a { color: var(--pink-3); }
 }
 .nav-links a:hover { color: var(--pink-3); border-bottom-color: var(--pink); }
 
-@media (max-width: 840px) {
+/* Breakpoint sized from the widest the nav can ever get: every section link
+   present INCLUDING Memes, which is hidden until CONFIG.memes is populated.
+   Measured, not guessed — below this the row wraps to two lines and anchor
+   targets land under the sticky bar. */
+@media (max-width: 980px) {
   .nav-links { display: none; }
 }
 
