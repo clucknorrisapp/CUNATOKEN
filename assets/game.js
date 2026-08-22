@@ -31,6 +31,8 @@
   const BEST_KEY = 'cuna_munch_best';
   /* Which gutter holds the joystick; the other holds the d-pad cross. */
   const CTL_KEY = 'cuna_ctl_side';
+  /* Whether the ring re-centres under the thumb or holds its printed spot. */
+  const FLOAT_KEY = 'cuna_stick_float';
 
   /* speed table: [player, playerEating, chaser, frightened, tunnel] tiles/sec */
   function speeds(course) {
@@ -1527,11 +1529,16 @@
        is set, so this is a handedness preference rather than a mode you have
        to get right before you are allowed to play. */
     const swap = touch
-      ? '<button class="cg-swap" type="button" data-act="swapctl">' +
+      ? '<div class="cg-opts">' +
+        '<button class="cg-swap" type="button" data-act="swapctl">' +
         '<span>' + (ctlSide === 'l' ? 'STICK LEFT' : 'D-PAD LEFT') + '</span>' +
         '<i>&#8644;</i>' +
         '<span>' + (ctlSide === 'l' ? 'D-PAD RIGHT' : 'STICK RIGHT') + '</span>' +
-        '</button>'
+        '</button>' +
+        '<button class="cg-swap" type="button" data-act="stickmode">' +
+        '<span>STICK: ' + (stickFloats ? 'FOLLOWS' : 'FIXED') + '</span>' +
+        '</button>' +
+        '</div>'
       : '';
     showOverlay(
       '<div class="cg-card cg-attract">' +
@@ -1707,6 +1714,23 @@
      there. Defaults to the stick on the right. */
   let ctlSide = 'r';
 
+  /* A joystick that jumps to wherever you touched is easier to grab but has
+     no fixed location, so it never becomes muscle memory — you re-find it
+     every time instead of learning where it is. Fixed is the default; the
+     start card offers the other. */
+  let stickFloats = false;
+
+  function setStickFloats(v) {
+    stickFloats = !!v;
+    try { localStorage.setItem(FLOAT_KEY, stickFloats ? '1' : '0'); } catch (e) { }
+  }
+
+  function readStickFloats() {
+    let v = false;
+    try { v = localStorage.getItem(FLOAT_KEY) === '1'; } catch (e) { }
+    stickFloats = v;
+  }
+
   function setCtlSide(side) {
     if (side !== 'l' && side !== 'r') return;
     ctlSide = side;
@@ -1872,7 +1896,6 @@
     if (e.cancelable) e.preventDefault();
 
     const pt = localPt(S, e);
-    S.ox = pt.x; S.oy = pt.y;
     S.dragging = false;
     if (S.pad) S.pad.classList.add('is-hot');
 
@@ -1880,13 +1903,31 @@
     S.lastDir = arm;
     if (arm >= 0) setDir(arm);
 
-    /* The ring re-centres under the thumb instead of making you hit it. It is
-       offset by transform rather than moved outright so that releasing lets
-       it spring back to its printed home — on the stick side that home is
-       what makes it findable in the first place. */
-    S.stick.classList.add('is-drag');
-    S.stick.style.transform =
-      'translate3d(' + (pt.x - S.homeX) + 'px,' + (pt.y - S.homeY) + 'px,0)';
+    /* A fixed stick holds its printed spot and is driven from its own centre,
+       the way a physical one is: you reach for a known place and push from
+       there. The grab radius is generous — a bit wider than the ring — so
+       "near enough" counts, but the ring itself never moves.
+
+       Pressing the rest of that gutter is not dead: it falls through to a
+       plain swipe from wherever the thumb landed, so a miss still steers
+       instead of doing nothing. */
+    const grabbed = Math.hypot(pt.x - S.homeX, pt.y - S.homeY) <= S.r * 1.35;
+    const anchored = S.mode === 'stick' && !stickFloats && grabbed;
+    S.ringDriven = S.mode !== 'stick' || stickFloats || grabbed;
+
+    if (anchored) {
+      S.ox = S.homeX; S.oy = S.homeY;
+      S.stick.style.transform = 'translate3d(0,0,0)';
+    } else {
+      S.ox = pt.x; S.oy = pt.y;
+      if (S.ringDriven) {
+        /* Floating: the ring comes to the thumb rather than the other way
+           round, offset by transform so releasing springs it home. */
+        S.stick.classList.add('is-drag');
+        S.stick.style.transform =
+          'translate3d(' + (pt.x - S.homeX) + 'px,' + (pt.y - S.homeY) + 'px,0)';
+      }
+    }
     S.nub.style.transform = 'translate3d(0,0,0)';
     tapStart();
   }
@@ -1901,7 +1942,7 @@
 
     if (!S.dragging) {
       S.dragging = true;
-      S.stick.classList.add('is-live');
+      if (S.ringDriven) S.stick.classList.add('is-live');
       if (S.pad) S.pad.classList.add('is-dragging');
       /* A drag that began on an arm should be free to turn away from it, so
          the arm's direction stops acting as the hysteresis anchor. */
@@ -1918,9 +1959,11 @@
     /* The nub snaps to the committed direction at full throw rather than
        tracking the thumb. Showing a diagonal would be showing a direction the
        game cannot accept. */
-    const throwR = S.r * 0.62;
-    S.nub.style.transform = 'translate3d(' +
-      (DX[S.lastDir] * throwR) + 'px,' + (DY[S.lastDir] * throwR) + 'px,0)';
+    if (S.ringDriven) {
+      const throwR = S.r * 0.62;
+      S.nub.style.transform = 'translate3d(' +
+        (DX[S.lastDir] * throwR) + 'px,' + (DY[S.lastDir] * throwR) + 'px,0)';
+    }
   }
 
   function padUp(S, e) {
@@ -1955,7 +1998,7 @@
     const S = {
       side: side, gut: gut, stick: stick, pad: pad, arms: arms,
       nub: stick.querySelector('.cg-nub'),
-      id: null, ox: 0, oy: 0, r: 60, lastDir: -1, dragging: false,
+      id: null, ox: 0, oy: 0, r: 60, lastDir: -1, dragging: false, ringDriven: true,
       homeX: 0, homeY: 0, padX: 0, padY: 0, padR: 74, mode: 'pad'
     };
     sticks[side] = S;
@@ -2207,6 +2250,7 @@
     placeActors(true);
     mkStick('l'); mkStick('r');
     readCtlSide();
+    readStickFloats();
     buildLegend();
     layout();
     paintHud(); paintLives(); updateHint(); attractCard(); setChev(LEFT); lightArm(LEFT);
@@ -2223,6 +2267,12 @@
       const b = e.target.closest ? e.target.closest('[data-act]') : null;
       if (!b) return;
       const a = b.getAttribute('data-act');
+      if (a === 'stickmode') {
+        setStickFloats(!stickFloats);
+        attractCard();
+        toast(stickFloats ? 'STICK FOLLOWS YOUR THUMB' : 'STICK STAYS PUT');
+        return;
+      }
       if (a === 'swapctl') {
         setCtlSide(ctlSide === 'l' ? 'r' : 'l');
         attractCard();

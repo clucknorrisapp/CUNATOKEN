@@ -315,14 +315,33 @@ exceeds the dead zone, so a resting hand commits nothing.
 
 The two gutters run the *same* handler; only what is drawn differs, and
 `armAt` returns -1 on the stick side so there are no invisible tap targets.
-The ring re-centres under the thumb on press and springs back to its printed
-home on release — on the stick side that home is what makes it findable, and
-on the pad side the ring is hidden until a drag actually starts.
+
+The stick is **fixed by default** (`cuna_stick_float`, off): the ring holds
+its printed spot and is driven from its own centre, the way a physical one
+is, so its position becomes muscle memory instead of being re-found every
+time. The grab radius is `r * 1.35` — generous, so "near enough" counts —
+and a press elsewhere in that gutter is not dead: it falls through to a plain
+swipe from wherever the thumb landed, so a miss still steers. The `STICK:`
+chip switches it to FOLLOWS, where the ring re-centres under the thumb on
+press and springs home on release. `S.ringDriven` records which of the two
+happened, so a swipe that missed the ring does not light it up or throw its
+nub. On the pad side the ring is hidden until a drag actually starts.
+
+**Keyboard.** Arrows or WASD steer, and also start the run from the attract
+screen or resume from pause. Space/Enter starts and restarts, P pauses, M
+mutes, Escape pauses (and from paused or game-over, leaves for the site).
+Modifier combos are ignored so browser shortcuts still work, and `shellEngaged()`
+means the keys are only claimed while the game is actually on screen — reading
+the footer does not find space and the arrows hijacked. Keyboard input goes
+through `setDir`, so it lights both crosses just like touch does. A
+coarse-pointer device never flips to the desktop layout even with a keyboard
+attached (`setInputMode` refuses it), so an iPad with a Magic Keyboard keeps
+its touch controls *and* takes keys.
 
 The cross is mostly an affordance. A bare swipe surface tests perfectly and
 still fails in the wild, because nothing tells anyone it is there.
 
-The swap chip is pinned to the bottom of the overlay rather than placed in
+The options row is pinned to the bottom of the overlay rather than placed in
 the card. In the card it sat within 5px of the dead centre of an iPad screen,
 which is exactly where a thumb lands to start a game, so tapping to play
 flipped your controls instead. Anything interactive on the attract overlay
@@ -330,6 +349,14 @@ also needs `pointer-events: auto`: that overlay is `cg-pass` so taps fall
 through to the field to start the run, and a button on it is otherwise inert.
 `fieldDown` bails on any `[data-act]` target for the same reason — without it
 the same touch that hits a button also starts the game underneath it.
+
+Two layout traps in that row: it spans `left/right` rather than centring with
+`left: 50%` + translate, because anchoring at 50% leaves only half the
+container's width to grow into and the chips wrapped to a second row on a
+375px screen despite fitting easily on one. And because the row is absolutely
+positioned it takes no part in centring the card above it, so
+`.cg-card.cg-attract` carries a bottom margin to reserve the space — without
+it the card and the chips overlapped by 9px on the shortest field.
 
 Four things about the input are easy to break and worth knowing:
 

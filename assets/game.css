@@ -364,13 +364,26 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
 
 /* ─────────── control chooser ─────────── */
 
+/* Pinned to the bottom of the overlay, not placed in the card. In the card
+   these sat within 5px of the dead centre of an iPad screen — precisely where
+   a thumb lands to start the game — so tapping to play changed your controls
+   instead. */
+/* The options row is absolutely positioned, so it takes no part in centring
+   the card above it. On a 375px screen the field is only 230px tall and the
+   two overlapped by 9px; the card has to reserve the room explicitly. Touch
+   only — there is no options row on desktop. */
+#cuna-game.cg-touch .cg-card.cg-attract { margin-bottom: 52px; }
+
+.cg-opts {
+  /* Spanning left-to-right rather than centring with left:50% + translate.
+     Anchoring at 50% leaves only half the container's width for the element
+     to grow into, so on a 375px screen the chips wrapped to a second row and
+     collided with the card above them, despite comfortably fitting on one. */
+  position: absolute; left: 8px; right: 8px; bottom: 10px;
+  display: flex; flex-wrap: wrap; gap: .35rem;
+  justify-content: center; align-items: stretch;
+}
 .cg-swap {
-  /* Pinned to the bottom of the overlay, not placed in the card. In the card
-     it sat within 5px of the dead centre of an iPad screen — precisely where
-     a thumb lands to start the game — so tapping to play flipped your
-     controls instead. */
-  position: absolute; left: 50%; bottom: 10px;
-  transform: translateX(-50%);
   display: inline-flex; align-items: center; gap: .5rem;
   padding: .45rem .8rem;
   font: inherit; font-size: .62rem; font-weight: 800; letter-spacing: .04em;
@@ -386,7 +399,7 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
 }
 .cg-swap span { white-space: nowrap; }
 .cg-swap i { font-style: normal; font-size: .95rem; color: var(--pink); }
-.cg-swap:active { transform: translateX(-50%) translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.cg-swap:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 
 /* ─────────── the gutter pad ─────────── */
 
