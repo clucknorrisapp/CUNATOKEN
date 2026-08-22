@@ -140,9 +140,9 @@
 
   /* ─────────────────── run / course state ─────────────────── */
 
-  const pellets = new Uint8Array(COLS * ROWS); /* 1 = bid, 2 = lips */
+  const pellets = new Uint8Array(COLS * ROWS); /* 1 = taco, 2 = loaded taco */
   let pelletsLeft = 0;
-  let pelletPath = null, pelletDirty = true;
+  let pelletPath = null, fillingPath = null, pelletDirty = true;
 
   function resetPellets() {
     pelletsLeft = 0;
@@ -315,7 +315,7 @@
      once as an ink silhouette 3px lower, once for real. Shadows for a whole
      layer go down first so they never stack on each other. */
 
-  let tacoGrad = null;
+  let tacoGrad = null, lipGrad = null;
 
   /* Two shell halves hinged at the BACK TIP, not the centre. A centre pivot
      leaves a notch behind the hinge and strokes both fold edges into an X
@@ -337,6 +337,137 @@
       shellHalf(g, s);
       g.restore();
     }
+  }
+
+  /* ── the player: lips and tongue ──────────────────────────────────────
+     Same signature and options as drawTaco, so the life icons and the title
+     card get the new character for free.
+
+     The chomp is two lip halves hinged at the back corner of the mouth,
+     rotating apart by `open` — the same trick the taco shell used, which is
+     what makes a Pac-Man read as a Pac-Man. The tongue rides underneath and
+     lolls further out in TONGUE OUT mode.                                  */
+
+  function lipHalf(g, s) {
+    /* One lip, drawn nose-to-corner. s = +1 lower, -1 upper. The cupid's-bow
+       dip on the upper lip is what stops it reading as a plain crescent. */
+    g.moveTo(-1.0, 0);
+    g.quadraticCurveTo(-0.62, s * 0.30, -0.16, s * 0.42);
+    g.quadraticCurveTo(0.10, s * 0.50, 0.44, s * 0.40);
+    g.quadraticCurveTo(0.86, s * 0.26, 1.02, s * 0.05);
+    g.quadraticCurveTo(1.06, s * 0.01, 1.0, 0);
+    g.closePath();
+  }
+
+  function buildMouth(g, open) {
+    g.beginPath();
+    for (let k = 0; k < 2; k++) {
+      const s = k ? -1 : 1;
+      g.save();
+      g.translate(-1.0, 0); g.rotate(s * open); g.translate(1.0, 0);
+      lipHalf(g, s);
+      g.restore();
+    }
+  }
+
+  function drawMouth(g, px, py, dir, open, opt) {
+    opt = opt || {};
+    const T = opt.tile || TILE;
+    const r = T * 0.50;
+    const LW = Math.max(2, Math.min(3, T * 0.13));
+    const closed = 1 - Math.min(1, open / MAX_OPEN);
+    const shadow = !!opt.shadow;
+    const spin = opt.spin || 0, shrink = opt.shrink == null ? 1 : opt.shrink;
+
+    g.save();
+    g.translate(px, py + (shadow ? 3 : 0));
+    if (spin) g.rotate(spin);
+    if (shrink !== 1) g.scale(shrink, shrink);
+    g.save();
+    if (dir === LEFT) g.scale(-1, 1);
+    else if (dir === UP) g.rotate(-Math.PI / 2);
+    else if (dir === DOWN) g.rotate(Math.PI / 2);
+    g.scale(r, r);
+    g.lineWidth = LW / r;
+    if (!shadow && !RM) g.scale(1 + 0.10 * closed, 1 - 0.10 * closed);
+
+    /* Tongue first, so the lips close over it. Always present — it is the
+       whole point of the character — and it reaches further in TONGUE OUT. */
+    if (!shadow) {
+      const reach = opt.tongue ? 1.5 : 0.92;
+      const tw = 0.60;
+      g.save();
+      /* A lighter pink than the lips, or the two merge into one blob at
+         maze scale and the character stops reading. */
+      g.fillStyle = C.pink3; g.strokeStyle = C.ink; g.lineWidth = LW / r;
+      g.beginPath();
+      if (g.roundRect) g.roundRect(-0.30, -tw / 2, reach, tw, tw / 2);
+      else g.rect(-0.30, -tw / 2, reach, tw);
+      g.fill(); g.stroke();
+      /* centre crease sells "tongue" rather than "pink tab" */
+      g.strokeStyle = C.pinkDeep; g.lineWidth = Math.max(1.4, LW * 0.6) / r; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(-0.05, 0); g.lineTo(reach - 0.34, 0); g.stroke();
+      g.restore();
+    }
+
+    buildMouth(g, open);
+    if (shadow) {
+      g.fillStyle = C.ink; g.fill();
+      g.restore(); g.restore();
+      return;
+    }
+
+    if (!lipGrad) {
+      lipGrad = g.createLinearGradient(-1, -1.1, 1, 1.1);
+      lipGrad.addColorStop(0, C.pink2);
+      lipGrad.addColorStop(1, C.pinkDeep);
+    }
+    g.fillStyle = lipGrad; g.fill();
+
+    /* Teeth: a bright band just inside each lip, clipped to that lip so the
+       two halves never scissor across the open mouth. Only worth it once the
+       tile is big enough for them to be more than a smear. */
+    if (T >= 22) {
+      for (let k = 0; k < 2; k++) {
+        const s = k ? -1 : 1;
+        g.save();
+        g.translate(-1.0, 0); g.rotate(s * open); g.translate(1.0, 0);
+        g.beginPath(); lipHalf(g, s); g.clip();
+        g.fillStyle = C.cream2;
+        g.beginPath();
+        g.moveTo(-0.55, s * 0.03);
+        g.quadraticCurveTo(0.10, s * 0.22, 0.80, s * 0.03);
+        g.lineTo(0.80, s * 0.10);
+        g.quadraticCurveTo(0.10, s * 0.29, -0.55, s * 0.09);
+        g.closePath(); g.fill();
+        g.restore();
+      }
+    }
+
+    /* gloss highlight on the upper lip, and the wink */
+    g.fillStyle = C.cream2;
+    g.globalAlpha = 0.85;
+    g.beginPath(); g.ellipse(-0.30, -0.30 - open * 0.6, 0.26, 0.12, -0.35, 0, 6.2832); g.fill();
+    g.globalAlpha = 1;
+
+    buildMouth(g, open);
+    g.strokeStyle = C.ink; g.lineWidth = LW / r; g.lineJoin = 'round'; g.lineCap = 'round';
+    g.stroke();
+    g.restore();
+
+    /* The wink sits in screen space, never rotated, so the character never
+       reads upside-down travelling left. */
+    if (!shadow && T >= 14) {
+      g.save();
+      g.scale(r, r);
+      g.strokeStyle = C.ink; g.lineWidth = Math.max(1.6, LW * 0.75) / r; g.lineCap = 'round';
+      g.beginPath();
+      if (opt.wink) { g.moveTo(-0.34, -0.86); g.quadraticCurveTo(-0.16, -0.70, 0.02, -0.86); }
+      else { g.moveTo(-0.16, -0.94); g.lineTo(-0.16, -0.72); }
+      g.stroke();
+      g.restore();
+    }
+    g.restore();
   }
 
   /* one function serves the player, the life icons and the title card */
@@ -625,6 +756,38 @@
     g.restore();
   }
 
+  /* The energizer: the same taco as the pellets, scaled up and garnished, so
+     it plainly reads as "the big one" rather than as a second character. The
+     pink mascot taco was tried here first and looked too much like the
+     player's lips at maze scale. */
+  function drawLoadedTaco(g, cx, cy, T, s) {
+    const r = 0.40 * T * s;
+    g.save();
+    g.translate(cx, cy + r * 0.22);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    const LW = Math.max(2, Math.min(3, T * 0.11));
+
+    /* shell */
+    g.beginPath();
+    g.moveTo(-r, 0); g.arc(0, 0, r, Math.PI, 0, true); g.closePath();
+    g.fillStyle = C.cream; g.fill();
+    g.strokeStyle = C.ink; g.lineWidth = LW; g.stroke();
+
+    /* filling, sitting just under the flat top edge */
+    const fr = r * 0.76;
+    g.beginPath();
+    g.moveTo(-fr, -r * 0.10); g.arc(0, -r * 0.10, fr, Math.PI, 0, true); g.closePath();
+    g.fillStyle = C.pink; g.fill();
+
+    /* garnish — two dots is all that survives at this size */
+    g.fillStyle = C.mint;
+    g.beginPath(); g.arc(-fr * 0.42, -r * 0.28, r * 0.15, 0, 6.2832); g.fill();
+    g.fillStyle = C.cream2;
+    g.beginPath(); g.arc(fr * 0.40, -r * 0.24, r * 0.13, 0, 6.2832); g.fill();
+
+    g.restore();
+  }
+
   function drawSideOrder(g, cx, cy, T, course) {
     const k = course <= 2 ? 0 : course <= 4 ? 1 : course <= 6 ? 2 : 3;
     g.save();
@@ -685,7 +848,7 @@
   let shakeT = 0, shakeMag = 0, killer = -1;
   let extraGiven = false;
   let floats = [], clock = 0;
-  let stats = { bids: 0, chasers: 0, deaths: 0 };
+  let stats = { tacos: 0, chasers: 0, deaths: 0 };
   let hintDone = false;
 
   let bestAtStart = 0;
@@ -902,7 +1065,7 @@
     const i = tx + ty * COLS, v = pellets[i];
     if (v) {
       pellets[i] = 0; pelletsLeft--; pelletDirty = true;
-      pelletsThisCourse++; pelletsThisLife++; stats.bids++;
+      pelletsThisCourse++; pelletsThisLife++; stats.tacos++;
       lastEatT = courseT;
       if (v === 1) { addScore(10); blip('chomp'); }
       else { addScore(50); playerFreeze = 0.06; startFright(); }
@@ -970,7 +1133,7 @@
        `score` — comparing against it there meant the banner could never fire. */
     bestAtStart = best;
     score = 0; lives = 3; course = 1; extraGiven = false;
-    stats = { bids: 0, chasers: 0, deaths: 0 };
+    stats = { tacos: 0, chasers: 0, deaths: 0 };
     graceT = 10; floats = [];
     hintDone = false; if (el.hint) el.hint.classList.remove('is-gone');
     enterImmersive();
@@ -1099,14 +1262,27 @@
 
   /* ───────────────────── render ───────────────────── */
 
+  /* Pellets are tiny tacos: a half-disc shell with the flat edge up, and a
+     filling strip along that edge. Still two batched Path2Ds and two fills a
+     frame — the shape changed, the cost did not. Below ~14px the filling is
+     dropped and it reads as a warm dot, which is the right call at that size. */
   function pelletBuild() {
     pelletPath = new Path2D();
-    const r = Math.max(1.5, 0.11 * TILE);
+    fillingPath = new Path2D();
+    const r = Math.max(2, 0.17 * TILE);
+    const showFilling = TILE >= 14;
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (pellets[x + y * COLS] !== 1) continue;
-      const cx = (x + 0.5) * TILE, cy = (y + 0.5) * TILE;
-      pelletPath.moveTo(cx + r, cy);
-      pelletPath.arc(cx, cy, r, 0, 6.2832);
+      const cx = (x + 0.5) * TILE, cy = (y + 0.5) * TILE + r * 0.30;
+      pelletPath.moveTo(cx - r, cy);
+      pelletPath.arc(cx, cy, r, Math.PI, 0, true);
+      pelletPath.closePath();
+      if (showFilling) {
+        const fr = r * 0.74, fy = cy - r * 0.18;
+        fillingPath.moveTo(cx - fr, fy);
+        fillingPath.arc(cx, fy, fr, Math.PI, 0, true);
+        fillingPath.closePath();
+      }
     }
     pelletDirty = false;
   }
@@ -1132,13 +1308,16 @@
     if (pelletDirty) pelletBuild();
     g.fillStyle = C.cream;
     g.fill(pelletPath);
+    if (T >= 14) { g.fillStyle = C.pink; g.fill(fillingPath); }
     if (T >= 20) { g.strokeStyle = C.ink; g.lineWidth = 1; g.stroke(pelletPath); }
 
-    /* energizers */
-    const puls = RM ? 1.07 : 1.0 + 0.14 * (0.5 + 0.5 * Math.sin(clock * Math.PI * 2 * 1.4));
+    /* Energizers: a full loaded taco, pulsing. The lips used to play this
+       part, but the lips are the player now — so the big one on the board is
+       simply the biggest taco on the board. */
+    const puls = RM ? 1.05 : 1.0 + 0.12 * (0.5 + 0.5 * Math.sin(clock * Math.PI * 2 * 1.4));
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (pellets[x + y * COLS] !== 2) continue;
-      drawLips(g, (x + 0.5) * T, (y + 0.5) * T, T, puls);
+      drawLoadedTaco(g, (x + 0.5) * T, (y + 0.5) * T, T, puls);
     }
 
     if (bonusOn && state === 'play') drawSideOrder(g, (BONUS_TILE.x + 0.5) * T, (BONUS_TILE.y + 0.5) * T, T, course);
@@ -1173,7 +1352,7 @@
     }
     const px = (P.x + 0.5) * T, py = (P.y + 0.5) * T + drop * T;
 
-    if (showTaco) drawTaco(g, px, py, P.dir, open, { shadow: true, spin: spin, shrink: shrink });
+    if (showTaco) drawMouth(g, px, py, P.dir, open, { shadow: true, spin: spin, shrink: shrink });
 
     /* art pass */
     if (showChasers) {
@@ -1194,7 +1373,7 @@
     }
     if (showTaco) {
       const wink = state === 'play' && !dying && (clock % 3.4) < 0.24;
-      drawTaco(g, px, py, P.dir, open, { spin: spin, shrink: shrink, tongue: frightT > 0, fright: frightT > 0, wink: wink });
+      drawMouth(g, px, py, P.dir, open, { spin: spin, shrink: shrink, tongue: frightT > 0, fright: frightT > 0, wink: wink });
     }
 
     /* floating score numbers — the only text the canvas draws */
@@ -1242,8 +1421,8 @@
         cv.width = s * 2; cv.height = s * 2; cv.style.width = s + 'px'; cv.style.height = s + 'px';
         const g = cv.getContext('2d');
         g.setTransform(2, 0, 0, 2, 0, 0);
-        drawTaco(g, s / 2, s / 2 - 1, RIGHT, 0.3, { tile: s * 0.92, shadow: true });
-        drawTaco(g, s / 2, s / 2 - 1, RIGHT, 0.3, { tile: s * 0.92 });
+        drawMouth(g, s / 2, s / 2 - 1, RIGHT, 0.3, { tile: s * 0.92, shadow: true });
+        drawMouth(g, s / 2, s / 2 - 1, RIGHT, 0.3, { tile: s * 0.92 });
         box.appendChild(cv);
       }
       box.setAttribute('aria-label', lives + ' tacos left');
@@ -1307,7 +1486,7 @@
     const rows = [
       ['Calories', score.toLocaleString('en-US')],
       ['Course reached', String(course)],
-      ['Bids eaten', String(stats.bids)],
+      ['Tacos eaten', String(stats.tacos)],
       ['Chasers swallowed', String(stats.chasers)],
       ['Times spat out', String(stats.deaths)],
       ['% Daily Degen', degen + '%']
