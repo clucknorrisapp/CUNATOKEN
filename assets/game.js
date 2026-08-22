@@ -1748,6 +1748,12 @@
      before the turn flips. Hysteresis around the CURRENT direction rather
      than a symmetric dead zone. */
   const TURN_MARGIN = 1.35;
+  /* The ratio alone is not enough. Near the centre both axes are a handful of
+     pixels, so a 1-2px jitter flips which one is "dominant" and the stick
+     stutters between two directions — worst on a tablet, where the ring is
+     bigger and a light thumb produces a lot of small high-frequency moves.
+     A turn must therefore also win by an absolute margin, not just a ratio. */
+  const TURN_MIN_PX = 10;
 
   function commitVec(S, dx, dy) {
     if (S !== activeStick) return;
@@ -1758,7 +1764,7 @@
       const horiz = S.lastDir === LEFT || S.lastDir === RIGHT;
       const held = horiz ? ax : ay;
       const rival = horiz ? ay : ax;
-      if (rival < held * TURN_MARGIN) d = S.lastDir;
+      if (rival < held * TURN_MARGIN || rival - held < TURN_MIN_PX) d = S.lastDir;
     }
 
     S.committed = true; S.lastDir = d; P.want = d; setChev(d);
@@ -1771,7 +1777,14 @@
        thumb naturally rests — used to get clamped upward by 30-90px, so the
        stick read as already pushed DOWN before the thumb had moved at all. */
     const dx = px - S.ox, dy = py - S.oy, m = Math.hypot(dx, dy);
-    if (m >= 10) commitVec(S, dx, dy);
+    /* Dead zone scales with the ring. A flat 10px was ~13% of the throw on a
+       tablet-sized stick, which put the noisy near-centre band well inside
+       the range a resting thumb occupies. */
+    const dead = Math.max(12, S.r * 0.20);
+    if (m >= dead) {
+      if (S.pendingSide) { S.pendingSide = false; setStickSide(S.side); }
+      commitVec(S, dx, dy);
+    }
 
     /* The nub snaps to the committed direction at full throw rather than
        following the thumb freely. Showing a diagonal would be showing a
@@ -1780,7 +1793,7 @@
        a d-pad you can slide your thumb around on. */
     const throwR = S.r * 0.62;
     let nx = 0, ny = 0;
-    if (m >= 10 && S.lastDir >= 0) {
+    if (m >= dead && S.lastDir >= 0) {
       nx = DX[S.lastDir] * throwR;
       ny = DY[S.lastDir] * throwR;
     }
@@ -1790,8 +1803,23 @@
   function stickDown(S, e) {
     setInputMode('touch');
     if (S.id !== null) return;
-    /* Pressed the empty gutter — bring the stick across and keep it there. */
-    if (S.side !== stickSide) setStickSide(S.side);
+
+    /* Someone is already steering. Any other touch is incidental — a resting
+       hand or a palm, which on a tablet lands on the empty gutter constantly
+       because it is a large dead area under the hand holding the thing. It
+       must not take over, and it must not drag the stick to the other side
+       while a thumb is mid-drag on this one. */
+    const other = sticks[S.side === 'l' ? 'r' : 'l'];
+    if (other && other.id !== null) {
+      /* Capture is the liveness test. If the other gutter no longer holds the
+         pointer it believes it does, that touch died without ever firing a
+         cancel and the stick is stuck — which would leave this gutter dead
+         for the rest of the run. Reclaim it rather than returning. */
+      let live = false;
+      try { live = other.gut.hasPointerCapture(other.id); } catch (err) { live = false; }
+      if (live) return;
+      releaseStick(other);
+    }
     S.id = e.pointerId;
     try { S.gut.setPointerCapture(e.pointerId); } catch (err) { }
     const rect = S.gut.getBoundingClientRect();
@@ -1807,6 +1835,10 @@
     S.stick.classList.add('is-drag', 'is-live');
     S.stick.style.transform = 'translate3d(' + (S.cx - S.homeX) + 'px,' + (S.cy - S.homeY) + 'px,0)';
     S.nub.style.transform = 'translate3d(0,0,0)';
+    /* Switching sides waits for an actual drag rather than firing on contact,
+       so a finger merely resting on the empty gutter never moves the stick
+       out from under the other hand. */
+    S.pendingSide = S.side !== stickSide;
     S.downX = px; S.downY = py; S.downT = performance.now(); S.committed = false;
     S.lx = px; S.ly = py;
     activeStick = S;
@@ -1822,25 +1854,29 @@
     if (e.cancelable) e.preventDefault();
     if (!S.committed && performance.now() - S.downT < 120) {
       const fx = px - S.downX, fy = py - S.downY;
-      if (Math.hypot(fx, fy) > 28) commitVec(S, fx, fy);
+      if (Math.hypot(fx, fy) > Math.max(28, S.r * 0.45)) commitVec(S, fx, fy);
     }
     evalStick(S, px, py);
   }
 
   function stickUp(S, e) {
     if (S.id !== e.pointerId) return;
+    releaseStick(S);
+  }
+
+  function releaseStick(S) {
+    const pid = S.id;
     S.id = null;
-    try { S.gut.releasePointerCapture(e.pointerId); } catch (err) { }
+    S.pendingSide = false;
+    if (pid !== null) { try { S.gut.releasePointerCapture(pid); } catch (err) { } }
     S.stick.classList.remove('is-drag', 'is-live');
     S.stick.style.transform = 'translate3d(0,0,0)';
     S.nub.style.transform = 'translate3d(0,0,0)';
     S.cx = S.homeX; S.cy = S.homeY;
     S.ox = S.homeX; S.oy = S.homeY;
     S.lastDir = -1;
-    if (activeStick === S) {
-      const other = sticks[S.side === 'l' ? 'r' : 'l'];
-      if (other && other.id !== null) { activeStick = other; evalStick(other, other.lx, other.ly); }
-    }
+    /* No handoff to the other stick: only one can hold a pointer at a time
+       now, by construction in stickDown. */
     /* direction stays latched — releasing does not stop the taco */
   }
 
@@ -1849,7 +1885,7 @@
     const stick = gut.querySelector('.cg-stick');
     const S = {
       side: side, gut: gut, stick: stick, nub: stick.querySelector('.cg-nub'),
-      id: null, homeX: 0, homeY: 0, cx: 0, cy: 0, ox: 0, oy: 0, r: 60, lastDir: -1,
+      id: null, homeX: 0, homeY: 0, cx: 0, cy: 0, ox: 0, oy: 0, r: 60, lastDir: -1, pendingSide: false,
       downX: 0, downY: 0, downT: 0, committed: false, lx: 0, ly: 0
     };
     sticks[side] = S;
