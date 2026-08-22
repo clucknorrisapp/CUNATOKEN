@@ -1737,15 +1737,31 @@
     setStickSide(v);
   }
 
+  /* The maze is 90 degrees only, so there is no such thing as a diagonal
+     input — the dominant axis always wins outright. The old version left a
+     dead cone around each diagonal where nothing committed, which is a
+     mitigation for a problem that shouldn't exist in a four-way game and
+     made the stick feel unresponsive right where thumbs actually sit.
+
+     What stops it machine-gunning near 45 degrees is stickiness to the
+     direction already held: the other axis has to beat it by a clear margin
+     before the turn flips. Hysteresis around the CURRENT direction rather
+     than a symmetric dead zone. */
+  const TURN_MARGIN = 1.35;
+
   function commitVec(S, dx, dy) {
     if (S !== activeStick) return;
     const ax = Math.abs(dx), ay = Math.abs(dy);
-    let d = -1;
-    /* 1.5 ratio = a 67.4° cone per axis, with 22.6° of "keep going" around
-       each diagonal. Without it a thumb near a diagonal machine-guns turns. */
-    if (ax > 1.5 * ay) d = dx > 0 ? RIGHT : LEFT;
-    else if (ay > 1.5 * ax) d = dy > 0 ? DOWN : UP;
-    if (d >= 0) { S.committed = true; P.want = d; setChev(d); }
+    let d = ax > ay ? (dx > 0 ? RIGHT : LEFT) : (dy > 0 ? DOWN : UP);
+
+    if (S.committed && S.lastDir >= 0 && d !== S.lastDir) {
+      const horiz = S.lastDir === LEFT || S.lastDir === RIGHT;
+      const held = horiz ? ax : ay;
+      const rival = horiz ? ay : ax;
+      if (rival < held * TURN_MARGIN) d = S.lastDir;
+    }
+
+    S.committed = true; S.lastDir = d; P.want = d; setChev(d);
   }
 
   function evalStick(S, px, py) {
@@ -1756,9 +1772,19 @@
        stick read as already pushed DOWN before the thumb had moved at all. */
     const dx = px - S.ox, dy = py - S.oy, m = Math.hypot(dx, dy);
     if (m >= 10) commitVec(S, dx, dy);
-    const max = S.r * 0.66;
-    const k = m > max ? max / m : 1;
-    S.nub.style.transform = 'translate3d(' + (dx * k) + 'px,' + (dy * k) + 'px,0)';
+
+    /* The nub snaps to the committed direction at full throw rather than
+       following the thumb freely. Showing a diagonal would be showing a
+       direction the game cannot take; snapping makes the state you are
+       actually in unambiguous, and turns the stick into something closer to
+       a d-pad you can slide your thumb around on. */
+    const throwR = S.r * 0.62;
+    let nx = 0, ny = 0;
+    if (m >= 10 && S.lastDir >= 0) {
+      nx = DX[S.lastDir] * throwR;
+      ny = DY[S.lastDir] * throwR;
+    }
+    S.nub.style.transform = 'translate3d(' + nx + 'px,' + ny + 'px,0)';
   }
 
   function stickDown(S, e) {
@@ -1810,6 +1836,7 @@
     S.nub.style.transform = 'translate3d(0,0,0)';
     S.cx = S.homeX; S.cy = S.homeY;
     S.ox = S.homeX; S.oy = S.homeY;
+    S.lastDir = -1;
     if (activeStick === S) {
       const other = sticks[S.side === 'l' ? 'r' : 'l'];
       if (other && other.id !== null) { activeStick = other; evalStick(other, other.lx, other.ly); }
@@ -1822,7 +1849,7 @@
     const stick = gut.querySelector('.cg-stick');
     const S = {
       side: side, gut: gut, stick: stick, nub: stick.querySelector('.cg-nub'),
-      id: null, homeX: 0, homeY: 0, cx: 0, cy: 0, ox: 0, oy: 0, r: 60,
+      id: null, homeX: 0, homeY: 0, cx: 0, cy: 0, ox: 0, oy: 0, r: 60, lastDir: -1,
       downX: 0, downY: 0, downT: 0, committed: false, lx: 0, ly: 0
     };
     sticks[side] = S;

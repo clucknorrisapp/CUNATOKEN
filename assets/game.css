@@ -388,7 +388,12 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   border: 3px solid var(--ink);
   box-shadow: 0 4px 0 var(--ink);
   will-change: transform;
+  /* The nub snaps between four positions rather than tracking the thumb, so
+     a short ease makes it read as clunking into a detent instead of
+     teleporting. Long enough to see, short enough not to lag the input. */
+  transition: transform .07s linear;
 }
+@media (prefers-reduced-motion: reduce) { .cg-nub { transition: none; } }
 .cg-nub::after {
   content: ""; position: absolute; left: 20%; top: 16%;
   width: 26%; height: 26%; border-radius: 50%;
