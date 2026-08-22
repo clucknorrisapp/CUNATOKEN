@@ -1571,8 +1571,10 @@
       '<p class="cg-lfoot">* Percent Daily Degen is made up. So is everything else on this label. Contains no financial advice, no nutrition, and no promises. Not a food. Not an investment. Just a taco.</p>' +
       '</div><div class="cg-btns">' +
       '<button class="btn btn-buy btn-sm" type="button" data-act="again">AGAIN</button>' +
-      '<button class="btn btn-ghost btn-sm" type="button" data-act="share">SHARE THE LABEL</button>' +
-      '<button class="btn btn-ghost btn-sm" type="button" data-act="exit">BACK TO THE SITE</button>' +
+      /* Short enough to stay on one line in a half-width grid cell — the long
+         versions wrapped and left the two buttons two lines tall. */
+      '<button class="btn btn-ghost btn-sm" type="button" data-act="share">SHARE LABEL</button>' +
+      '<button class="btn btn-ghost btn-sm" type="button" data-act="exit">BACK TO SITE</button>' +
       '</div></div>', false);
   }
 

@@ -207,7 +207,7 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
    the nutrition label above it. */
 .cg-label-wrap .cg-btns {
   margin-top: 0;
-  padding: .8rem .7rem;
+  padding: .9rem .7rem 1.15rem;
   background: var(--cream-2);
   border: var(--edge);
   border-top: none;
@@ -216,6 +216,23 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   margin-left: auto; margin-right: auto;
 }
 .cg-label-wrap .cg-label { border-radius: 8px 8px 0 0; border-bottom: none; margin-bottom: 0; }
+
+/* Three buttons never fit one row, and letting them wrap left the third
+   centred on its own line looking accidental. Give them a deliberate
+   hierarchy instead: AGAIN is what people want after a game over, so it
+   spans the full width; the other two share the row under it. */
+.cg-label-wrap .cg-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+}
+.cg-label-wrap .cg-btns > :first-child { grid-column: 1 / -1; }
+.cg-label-wrap .cg-btns .btn { width: 100%; justify-content: center; }
+
+/* Below this the two secondary labels get too tight side by side. */
+@media (max-width: 430px) {
+  .cg-label-wrap .cg-btns { grid-template-columns: 1fr; }
+}
 .cg-toast {
   position: absolute; left: 50%; top: 8%;
   transform: translate(-50%, -6px);
