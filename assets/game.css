@@ -85,6 +85,13 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
 #cuna-game.cg-desktop .cg-stick { display: none; }
 #cuna-game.cg-touch .cg-stick { display: block; }
 
+/* One stick, on the side you last used. BOTH gutters stay touch-active — the
+   hidden one is what lets you switch hands: press it and the stick moves
+   there and stays. Two identical sticks read as a dual-stick control scheme
+   and invite the question "what does the other one do?". */
+#cuna-game.cg-side-l .cg-gutter-r .cg-stick,
+#cuna-game.cg-side-r .cg-gutter-l .cg-stick { display: none; }
+
 /* A three-column grid needs ~560px. Below that, collapse to one column and
    drop the side panels rather than letting the maze get sliced off and the
    body scroll sideways. */

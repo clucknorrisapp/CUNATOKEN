@@ -298,9 +298,17 @@ The path art below is therefore still live code, not legacy:
 `assets/app.js` which is deliberately ES5-style.
 
 **Controls.** Desktop: arrows or WASD, P to pause, M to mute, Space/Enter to
-start. Mobile: twin virtual joysticks, one in each gutter, and **either one
-drives** — so left- and right-handers are both served and nobody reaches across
-the screen. A swipe on the playfield works too.
+start. Mobile: one virtual joystick, living in whichever gutter you last used.
+A swipe on the playfield works too.
+
+Both gutters stay touch-active even though only one shows a stick — pressing
+the empty one moves the stick there and remembers the choice in localStorage
+(`cuna_munch_side`, defaulting to the right). That is what serves left- and
+right-handers without anyone reaching across the maze.
+
+It was twin sticks first, one per gutter, both doing the same job. Two
+identical controls read as a dual-stick scheme and invite the question "what
+does the other one do?" — so it is one stick that follows your hand instead.
 
 Two things about the sticks are easy to break and worth knowing:
 

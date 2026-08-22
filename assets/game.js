@@ -26,6 +26,7 @@
   const OPP = [2, 3, 0, 1];
   const TOTAL_EDIBLES = 212;
   const BEST_KEY = 'cuna_munch_best';
+  const SIDE_KEY = 'cuna_munch_side';
 
   /* speed table: [player, playerEating, chaser, frightened, tunnel] tiles/sec */
   function speeds(course) {
@@ -1711,6 +1712,26 @@
     });
   }
 
+  /* Which gutter the stick lives in. Right by default because most people
+     are right-handed; pressing the other gutter moves it and remembers. */
+  let stickSide = 'r';
+
+  function setStickSide(side) {
+    if (side !== 'l' && side !== 'r') return;
+    stickSide = side;
+    if (el.shell) {
+      el.shell.classList.toggle('cg-side-l', side === 'l');
+      el.shell.classList.toggle('cg-side-r', side === 'r');
+    }
+    try { localStorage.setItem(SIDE_KEY, side); } catch (e) { }
+  }
+
+  function readStickSide() {
+    let v = 'r';
+    try { const stored = localStorage.getItem(SIDE_KEY); if (stored === 'l' || stored === 'r') v = stored; } catch (e) { }
+    setStickSide(v);
+  }
+
   function commitVec(S, dx, dy) {
     if (S !== activeStick) return;
     const ax = Math.abs(dx), ay = Math.abs(dy);
@@ -1738,6 +1759,8 @@
   function stickDown(S, e) {
     setInputMode('touch');
     if (S.id !== null) return;
+    /* Pressed the empty gutter — bring the stick across and keep it there. */
+    if (S.side !== stickSide) setStickSide(S.side);
     S.id = e.pointerId;
     try { S.gut.setPointerCapture(e.pointerId); } catch (err) { }
     const rect = S.gut.getBoundingClientRect();
@@ -1939,7 +1962,7 @@
   function updateHint() {
     if (!el.hint) return;
     el.hint.textContent = inputMode === 'touch'
-      ? 'Either thumb steers. Both sticks do the same job, so nobody has to reach across the screen.'
+      ? 'Drag to steer. The stick follows your thumb — press the other side and it moves over there.'
       : 'Arrows or WASD. P pauses. M is the sound. Space starts.';
   }
 
@@ -2025,6 +2048,7 @@
     el.shell.classList.add(inputMode === 'touch' ? 'cg-touch' : 'cg-desktop');
 
     readBest();
+    readStickSide();
     loadSprites();
     resetPellets();
     placeActors(true);
