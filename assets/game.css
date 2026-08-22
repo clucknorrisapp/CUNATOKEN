@@ -74,7 +74,7 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
     grid-template-areas: "hud hud hud" "gl field gr";
     min-height: 0;
   }
-  .cg-stick { display: none; }
+  .cg-stick, .cg-pad { display: none; }
 }
 #cuna-game.cg-desktop {
   grid-template-columns: minmax(240px, 1fr) auto minmax(240px, 1fr);
@@ -83,14 +83,21 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   min-height: 0;
 }
 #cuna-game.cg-desktop .cg-stick { display: none; }
-#cuna-game.cg-touch .cg-stick { display: block; }
+/* The ring only exists while a thumb is actually dragging. Left on screen
+   permanently it reads as the control — the thing you must go and find and
+   keep your thumb inside — which is exactly the habit that made this awkward
+   to hold on a tablet. */
+#cuna-game.cg-touch .cg-stick { display: block; opacity: 0; pointer-events: none; }
+#cuna-game.cg-touch .cg-stick.is-live { opacity: 1; }
 
-/* One stick, on the side you last used. BOTH gutters stay touch-active — the
-   hidden one is what lets you switch hands: press it and the stick moves
-   there and stays. Two identical sticks read as a dual-stick control scheme
-   and invite the question "what does the other one do?". */
-#cuna-game.cg-side-l .cg-gutter-r .cg-stick,
-#cuna-game.cg-side-r .cg-gutter-l .cg-stick { display: none; }
+/* Both gutters are live, permanently, and identical. The stick no longer
+   migrates between them: a cross is printed in each and either thumb can
+   swipe or tap at any moment. That is what makes a resting hand harmless —
+   there is no "active" side to take over, so a stationary touch commits
+   nothing no matter where it lands. The ring is not furniture any more; it
+   is drawn under your thumb only while you actually drag. */
+#cuna-game.cg-desktop .cg-pad { display: none; }
+#cuna-game.cg-touch .cg-pad { display: block; }
 
 /* A three-column grid needs ~560px. Below that, collapse to one column and
    drop the side panels rather than letting the maze get sliced off and the
@@ -343,7 +350,64 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   border-radius: 50%; border: 3px solid var(--ink); box-shadow: var(--pop);
 }
 
-/* ─────────── the twin sticks ─────────── */
+/* ─────────── the gutter pad ─────────── */
+
+/* A cross printed in the middle of each gutter. It is two things at once: a
+   tap target for people who want discrete buttons, and — mostly — a visible
+   sign that this dead-looking margin does something. A bare swipe surface
+   tests fine and still fails in the wild, because nothing tells you it is
+   there. The arms are deliberately low-contrast: they are an affordance, not
+   the main event. */
+.cg-pad {
+  position: absolute;
+  width: var(--pad, 148px); height: var(--pad, 148px);
+  display: none;
+  touch-action: none;
+  opacity: .5;
+  transition: opacity .2s ease;
+}
+.cg-pad.is-hot { opacity: .92; }
+/* While this gutter is being dragged, the ring is drawn on top of its own
+   cross and buries it. Fade the cross out rather than stacking two controls
+   in the same place — the ring is the live readout at that moment, and the
+   cross on the other side still shows the committed direction. */
+.cg-pad.is-dragging { opacity: .1; }
+.cg-padbtn {
+  position: absolute; width: 34%; height: 34%;
+  background: color-mix(in srgb, var(--plum-2) 72%, transparent);
+  border: 2px solid var(--ink);
+  transition: background .07s linear;
+}
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+  .cg-padbtn { background: rgba(82, 15, 51, .72); }
+}
+.cg-padbtn.is-on { background: var(--pink); }
+.cg-padbtn::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 0; height: 0; border-style: solid; --c: var(--cream);
+}
+.cg-pu { left: 33%; top: 0; border-radius: 12px 12px 0 0; }
+.cg-pd { left: 33%; bottom: 0; border-radius: 0 0 12px 12px; }
+.cg-pl { left: 0; top: 33%; border-radius: 12px 0 0 12px; }
+.cg-pr { right: 0; top: 33%; border-radius: 0 12px 12px 0; }
+.cg-pu::after { margin: -7px 0 0 -8px; border-width: 0 8px 11px 8px; border-color: transparent transparent var(--c) transparent; }
+.cg-pd::after { margin: -4px 0 0 -8px; border-width: 11px 8px 0 8px; border-color: var(--c) transparent transparent transparent; }
+.cg-pl::after { margin: -8px 0 0 -7px; border-width: 8px 11px 8px 0; border-color: transparent var(--c) transparent transparent; }
+.cg-pr::after { margin: -8px 0 0 -4px; border-width: 8px 0 8px 11px; border-color: transparent transparent transparent var(--c); }
+.cg-padhub {
+  position: absolute; left: 33%; top: 33%; width: 34%; height: 34%;
+  background: color-mix(in srgb, var(--plum-2) 72%, transparent);
+  border: 2px solid var(--ink);
+}
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+  .cg-padhub { background: rgba(82, 15, 51, .72); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cg-pad, .cg-padbtn { transition: none; }
+}
+
+/* ─────────── the drag ring ─────────── */
+
 
 .cg-stick {
   position: absolute;
@@ -353,7 +417,7 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   transition: transform .18s cubic-bezier(.2, .9, .3, 1);
   touch-action: none;
 }
-.cg-stick.is-drag { transition: none; }
+.cg-stick.is-drag { transition: opacity .1s ease; }
 .cg-ring {
   position: absolute; inset: 0; border-radius: 50%;
   background: color-mix(in srgb, var(--plum-2) 88%, transparent);

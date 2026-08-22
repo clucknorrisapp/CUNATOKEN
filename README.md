@@ -298,26 +298,48 @@ The path art below is therefore still live code, not legacy:
 `assets/app.js` which is deliberately ES5-style.
 
 **Controls.** Desktop: arrows or WASD, P to pause, M to mute, Space/Enter to
-start. Mobile: one virtual joystick, living in whichever gutter you last used.
-A swipe on the playfield works too.
+start. Touch: a cross is printed in **both** gutters and both are always live.
+Tap an arm of either cross, or drag/swipe anywhere in either gutter, or swipe
+on the playfield itself — all three drive the same thing and all work at once,
+with no mode to pick and nothing to remember.
 
-Both gutters stay touch-active even though only one shows a stick — pressing
-the empty one moves the stick there and remembers the choice in localStorage
-(`cuna_munch_side` — the storage keys predate the rename and keep their old
-names so nobody's saved best is reset; defaulting to the right). That is what serves left- and
-right-handers without anyone reaching across the maze.
+Both gutters being permanently live is the design, not an oversight. The
+scheme it replaced had a single stick that migrated to whichever gutter you
+pressed, which is what made it unusable on a tablet: an iPad is held
+two-handed, the empty gutter is a large dead area directly under the holding
+hand, and any incidental contact there dragged the stick across and took over
+steering from the thumb mid-drag. With both sides live and neither moving,
+there is no "active" side to steal, and a stationary touch simply never
+exceeds the dead zone, so a resting hand commits nothing.
 
-It was twin sticks first, one per gutter, both doing the same job. Two
-identical controls read as a dual-stick scheme and invite the question "what
-does the other one do?" — so it is one stick that follows your hand instead.
+The cross is mostly an affordance. A bare swipe surface tests perfectly and
+still fails in the wild, because nothing tells anyone it is there.
 
-Two things about the sticks are easy to break and worth knowing:
+Four things about the input are easy to break and worth knowing:
 
+- **Hysteresis applies across axes only.** A turn from LEFT to UP must beat
+  the direction already held (`TURN_MARGIN` ratio *and* `TURN_MIN_PX`
+  absolute) so it does not machine-gun near 45 degrees. But a reversal along
+  the *same* axis is not a competition — the sign flipped, and that is all —
+  so it commits immediately. Weighing a reversal against its own axis makes
+  `held` and `rival` the same number, the test can never pass, and the
+  direction can never reverse: on the old build you could push up, drag all
+  the way back down, and it stayed stubbornly UP.
+- **Re-anchor on a committed change, and only then.** `commitVec` returns
+  whether the direction actually changed; the caller moves the gesture origin
+  to that point when it did. Re-anchoring every move resets the evidence each
+  frame so no vector can ever grow enough to win a turn; never re-anchoring
+  leaves the first leg's displacement standing forever so no *second* turn in
+  a gesture can beat it. Either mistake looks like "chained swipes are
+  ignored".
 - The direction vector is measured from **where the thumb landed** (`ox/oy`),
-  not from the ring's drawn centre (`cx/cy`). The ring is clamped so it never
-  renders half outside the gutter; measuring from the clamped centre meant a
-  thumb resting low — where thumbs actually rest — read as already pushed down
-  before it moved.
+  never from the ring's drawn centre. The ring is drawn under the thumb on
+  drag and is a readout, not the origin.
+- The playfield swipe deliberately has **no dead wedge**. Requiring one axis
+  to beat the other by 1.5x discarded 22.6 degrees on each diagonal — 90
+  degrees of the circle, a quarter of every possible swipe, silently. A
+  four-way game has no diagonals to disambiguate; the dominant axis wins and
+  hysteresis handles the rest.
 - The portrait grid caps the thumb deck and centres the field in what is left.
   The maze is width-bound in portrait, so leftover height is unavoidable slack;
   the cap stops it pooling into a dead band between the maze and the sticks.

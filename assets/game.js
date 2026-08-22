@@ -25,11 +25,10 @@
   const DY = [-1, 0, 1, 0];
   const OPP = [2, 3, 0, 1];
   const TOTAL_EDIBLES = 212;
-  /* Storage keys keep their original names on purpose. Renaming them to match
-     the game's new title would silently reset every player's personal best and
-     stick side, which is a real cost for no benefit — nobody sees these. */
+  /* The storage key keeps its original name on purpose. Renaming it to match
+     the game's new title would silently reset every player's personal best,
+     which is a real cost for no benefit — nobody sees this. */
   const BEST_KEY = 'cuna_munch_best';
-  const SIDE_KEY = 'cuna_munch_side';
 
   /* speed table: [player, playerEating, chaser, frightened, tunnel] tiles/sec */
   function speeds(course) {
@@ -1102,7 +1101,7 @@
       }
     }
     if (firstOfCourse) { phaseIdx = 0; phaseT = 0; courseT = 0; }
-    setChev(P.dir);
+    setChev(P.dir); lightArm(P.dir);
   }
 
   function resetCourse(showCourseCard) {
@@ -1687,7 +1686,6 @@
   }
 
   const sticks = {};
-  let activeStick = null;
 
   function placeSticks() {
     const portrait = mqPortrait.matches;
@@ -1707,212 +1705,253 @@
       cx = clamp(r + 8, cx, Math.max(r + 8, w - r - 8));
       let cy = h * (portrait ? 0.50 : 0.62);
       cy = clamp(r + 8, cy, Math.max(r + 8, h - r - 8));
-      S.homeX = cx; S.homeY = cy;
-      S.stick.style.left = (cx - r) + 'px';
-      S.stick.style.top = (cy - r) + 'px';
+      /* The cross is furniture: it sits put, centred in the gutter, and marks
+         the area out as interactive. The ring is not furniture — it is drawn
+         under the thumb on drag — so its resting position only matters before
+         the first touch. */
+      S.padR = d * 0.5;
+      S.padX = cx; S.padY = cy;
+      if (S.pad) {
+        S.pad.style.setProperty('--pad', d + 'px');
+        S.pad.style.left = (cx - S.padR) + 'px';
+        S.pad.style.top = (cy - S.padR) + 'px';
+      }
       if (S.id === null) {
-        S.cx = cx; S.cy = cy; S.ox = cx; S.oy = cy;
+        S.ox = cx; S.oy = cy;
+        S.stick.style.left = (cx - r) + 'px';
+        S.stick.style.top = (cy - r) + 'px';
         S.stick.style.transform = 'translate3d(0,0,0)';
       }
     });
   }
 
-  /* Which gutter the stick lives in. Right by default because most people
-     are right-handed; pressing the other gutter moves it and remembers. */
-  let stickSide = 'r';
-
-  function setStickSide(side) {
-    if (side !== 'l' && side !== 'r') return;
-    stickSide = side;
-    if (el.shell) {
-      el.shell.classList.toggle('cg-side-l', side === 'l');
-      el.shell.classList.toggle('cg-side-r', side === 'r');
-    }
-    try { localStorage.setItem(SIDE_KEY, side); } catch (e) { }
-  }
-
-  function readStickSide() {
-    let v = 'r';
-    try { const stored = localStorage.getItem(SIDE_KEY); if (stored === 'l' || stored === 'r') v = stored; } catch (e) { }
-    setStickSide(v);
-  }
-
   /* The maze is 90 degrees only, so there is no such thing as a diagonal
-     input — the dominant axis always wins outright. The old version left a
-     dead cone around each diagonal where nothing committed, which is a
-     mitigation for a problem that shouldn't exist in a four-way game and
-     made the stick feel unresponsive right where thumbs actually sit.
-
-     What stops it machine-gunning near 45 degrees is stickiness to the
-     direction already held: the other axis has to beat it by a clear margin
-     before the turn flips. Hysteresis around the CURRENT direction rather
-     than a symmetric dead zone. */
+     input — the dominant axis always wins outright. What stops it
+     machine-gunning near 45 degrees is stickiness to the direction already
+     held: the other axis has to beat it by a clear margin before the turn
+     flips. Hysteresis around the CURRENT direction rather than a symmetric
+     dead zone, which would leave a band where nothing happens at all. */
   const TURN_MARGIN = 1.35;
-  /* The ratio alone is not enough. Near the centre both axes are a handful of
-     pixels, so a 1-2px jitter flips which one is "dominant" and the stick
-     stutters between two directions — worst on a tablet, where the ring is
-     bigger and a light thumb produces a lot of small high-frequency moves.
-     A turn must therefore also win by an absolute margin, not just a ratio. */
+  /* The ratio alone is not enough. Near the origin both axes are a handful of
+     pixels, so 1-2px of jitter flips which one is "dominant" and the input
+     stutters between two directions — worst on a tablet, where a light thumb
+     produces a lot of small high-frequency moves. A turn must therefore also
+     win by an absolute margin, not just a ratio. */
   const TURN_MIN_PX = 10;
 
+  function setDir(d) {
+    if (d < 0) return;
+    P.want = d;
+    setChev(d);
+    lightArm(d);
+  }
+
+  /* Both gutters' crosses show the committed direction, not just the one you
+     touched. On a tablet your hands are far apart and you will be looking at
+     whichever is nearer; showing it on only one is showing it to the wrong
+     eye half the time. */
+  function lightArm(d) {
+    for (const side in sticks) {
+      const S = sticks[side];
+      if (!S || !S.arms) continue;
+      for (let k = 0; k < 4; k++) {
+        if (S.arms[k]) S.arms[k].classList.toggle('is-on', k === d);
+      }
+    }
+  }
+
+  /* Returns true when the committed direction actually changed, which is the
+     signal to re-anchor the gesture. */
   function commitVec(S, dx, dy) {
-    if (S !== activeStick) return;
     const ax = Math.abs(dx), ay = Math.abs(dy);
     let d = ax > ay ? (dx > 0 ? RIGHT : LEFT) : (dy > 0 ? DOWN : UP);
-
-    if (S.committed && S.lastDir >= 0 && d !== S.lastDir) {
-      const horiz = S.lastDir === LEFT || S.lastDir === RIGHT;
-      const held = horiz ? ax : ay;
-      const rival = horiz ? ay : ax;
-      if (rival < held * TURN_MARGIN || rival - held < TURN_MIN_PX) d = S.lastDir;
+    if (S.lastDir >= 0 && d !== S.lastDir) {
+      const horizOld = S.lastDir === LEFT || S.lastDir === RIGHT;
+      const horizNew = d === LEFT || d === RIGHT;
+      /* Stickiness only makes sense between two axes competing to be the
+         dominant one. A reversal along the SAME axis is not a competition —
+         the sign flipped, that is the whole of it — and weighing it against
+         the axis it is already on made the comparison self-defeating: the
+         held magnitude was also the rival magnitude, so the test could never
+         pass and the direction could never reverse. Push up, drag all the way
+         back down, and the old build stayed stubbornly up. */
+      if (horizOld === horizNew) {
+        /* unambiguous reversal — commit it */
+      } else {
+        const held = horizOld ? ax : ay;
+        const rival = horizOld ? ay : ax;
+        if (rival < held * TURN_MARGIN || rival - held < TURN_MIN_PX) d = S.lastDir;
+      }
     }
-
-    S.committed = true; S.lastDir = d; P.want = d; setChev(d);
+    const changed = d !== S.lastDir;
+    S.lastDir = d;
+    setDir(d);
+    return changed;
   }
 
-  function evalStick(S, px, py) {
-    /* Measured from where the thumb actually landed (ox/oy), NOT from the
-       ring's drawn centre (cx/cy). The ring is clamped so it never renders
-       half outside the gutter, and a thumb resting low — which is where a
-       thumb naturally rests — used to get clamped upward by 30-90px, so the
-       stick read as already pushed DOWN before the thumb had moved at all. */
-    const dx = px - S.ox, dy = py - S.oy, m = Math.hypot(dx, dy);
-    /* Dead zone scales with the ring. A flat 10px was ~13% of the throw on a
-       tablet-sized stick, which put the noisy near-centre band well inside
-       the range a resting thumb occupies. */
-    const dead = Math.max(12, S.r * 0.20);
-    if (m >= dead) {
-      if (S.pendingSide) { S.pendingSide = false; setStickSide(S.side); }
-      commitVec(S, dx, dy);
-    }
-
-    /* The nub snaps to the committed direction at full throw rather than
-       following the thumb freely. Showing a diagonal would be showing a
-       direction the game cannot take; snapping makes the state you are
-       actually in unambiguous, and turns the stick into something closer to
-       a d-pad you can slide your thumb around on. */
-    const throwR = S.r * 0.62;
-    let nx = 0, ny = 0;
-    if (m >= dead && S.lastDir >= 0) {
-      nx = DX[S.lastDir] * throwR;
-      ny = DY[S.lastDir] * throwR;
-    }
-    S.nub.style.transform = 'translate3d(' + nx + 'px,' + ny + 'px,0)';
+  /* Which cross arm, if any, a press landed on. Coordinates are gutter-local;
+     the pad's own box is what decides, so this stays correct whatever
+     placeSticks did with the layout. */
+  function armAt(S, px, py) {
+    const half = S.padR;
+    const x = px - S.padX, y = py - S.padY;
+    if (Math.abs(x) > half || Math.abs(y) > half) return -1;
+    /* Arms occupy the edge thirds of the cross; the hub in the middle is
+       deliberately inert, so a thumb landing dead centre does not pick a
+       direction at random. */
+    const t = half * 0.33;
+    if (Math.abs(x) <= t && y < -t) return UP;
+    if (Math.abs(x) <= t && y > t) return DOWN;
+    if (Math.abs(y) <= t && x < -t) return LEFT;
+    if (Math.abs(y) <= t && x > t) return RIGHT;
+    return -1;
   }
 
-  function stickDown(S, e) {
+  function deadZone(S) { return Math.max(12, S.r * 0.20); }
+
+  function localPt(S, e) {
+    const rect = S.gut.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  /* One handler for both ways of driving. A press on a cross arm fires that
+     direction immediately — a d-pad that waits for the release feels broken —
+     and a drag from anywhere in the gutter steers continuously, re-committing
+     as the vector turns, so you can chain turns inside a single gesture
+     without lifting.
+
+     Crucially there is no "active" gutter and nothing moves between them.
+     Both are always live and independent, which is what makes the hand
+     holding a tablet harmless: a stationary touch never exceeds the dead zone
+     and so commits nothing, and it has nothing to take over. */
+  function padDown(S, e) {
     setInputMode('touch');
     if (S.id !== null) return;
-
-    /* Someone is already steering. Any other touch is incidental — a resting
-       hand or a palm, which on a tablet lands on the empty gutter constantly
-       because it is a large dead area under the hand holding the thing. It
-       must not take over, and it must not drag the stick to the other side
-       while a thumb is mid-drag on this one. */
-    const other = sticks[S.side === 'l' ? 'r' : 'l'];
-    if (other && other.id !== null) {
-      /* Capture is the liveness test. If the other gutter no longer holds the
-         pointer it believes it does, that touch died without ever firing a
-         cancel and the stick is stuck — which would leave this gutter dead
-         for the rest of the run. Reclaim it rather than returning. */
-      let live = false;
-      try { live = other.gut.hasPointerCapture(other.id); } catch (err) { live = false; }
-      if (live) return;
-      releaseStick(other);
-    }
     S.id = e.pointerId;
     try { S.gut.setPointerCapture(e.pointerId); } catch (err) { }
-    const rect = S.gut.getBoundingClientRect();
-    const px = e.clientX - rect.left, py = e.clientY - rect.top;
-    /* Floating origin. Two separate things:
-         ox/oy — the true touch point, which the direction vector is measured
-                 from, so the stick is neutral the instant it is pressed.
-         cx/cy — the ring's drawn centre, clamped into the gutter so it never
-                 renders half off-screen. */
-    S.ox = px; S.oy = py;
-    S.cx = clamp(S.r + 8, px, Math.max(S.r + 8, rect.width - S.r - 8));
-    S.cy = clamp(S.r + 8, py, Math.max(S.r + 8, rect.height - S.r - 8));
-    S.stick.classList.add('is-drag', 'is-live');
-    S.stick.style.transform = 'translate3d(' + (S.cx - S.homeX) + 'px,' + (S.cy - S.homeY) + 'px,0)';
-    S.nub.style.transform = 'translate3d(0,0,0)';
-    /* Switching sides waits for an actual drag rather than firing on contact,
-       so a finger merely resting on the empty gutter never moves the stick
-       out from under the other hand. */
-    S.pendingSide = S.side !== stickSide;
-    S.downX = px; S.downY = py; S.downT = performance.now(); S.committed = false;
-    S.lx = px; S.ly = py;
-    activeStick = S;
     if (e.cancelable) e.preventDefault();
+
+    const pt = localPt(S, e);
+    S.ox = pt.x; S.oy = pt.y;
+    S.dragging = false;
+    if (S.pad) S.pad.classList.add('is-hot');
+
+    const arm = armAt(S, pt.x, pt.y);
+    S.lastDir = arm;
+    if (arm >= 0) setDir(arm);
+
+    /* The ring is drawn under the thumb, wherever that is, rather than
+       sitting in a fixed spot you have to go and find. */
+    S.stick.style.left = (pt.x - S.r) + 'px';
+    S.stick.style.top = (pt.y - S.r) + 'px';
+    S.stick.style.transform = 'translate3d(0,0,0)';
+    S.nub.style.transform = 'translate3d(0,0,0)';
     tapStart();
   }
 
-  function stickMove(S, e) {
+  function padMove(S, e) {
     if (S.id !== e.pointerId) return;
-    const rect = S.gut.getBoundingClientRect();
-    const px = e.clientX - rect.left, py = e.clientY - rect.top;
-    S.lx = px; S.ly = py;
     if (e.cancelable) e.preventDefault();
-    if (!S.committed && performance.now() - S.downT < 120) {
-      const fx = px - S.downX, fy = py - S.downY;
-      if (Math.hypot(fx, fy) > Math.max(28, S.r * 0.45)) commitVec(S, fx, fy);
+    const pt = localPt(S, e);
+    const dx = pt.x - S.ox, dy = pt.y - S.oy;
+    const m = Math.hypot(dx, dy);
+    if (m < deadZone(S)) return;
+
+    if (!S.dragging) {
+      S.dragging = true;
+      S.stick.classList.add('is-live', 'is-drag');
+      if (S.pad) S.pad.classList.add('is-dragging');
+      /* A drag that began on an arm should be free to turn away from it, so
+         the arm's direction stops acting as the hysteresis anchor. */
+      S.lastDir = -1;
     }
-    evalStick(S, px, py);
+    /* Re-anchor only when the direction actually changed. Re-anchoring on
+       every move would reset the evidence each frame, so a vector could never
+       grow enough to win a turn; never re-anchoring leaves the first leg's
+       displacement standing forever, so the second turn of a gesture can
+       never beat it. Anchoring at the moment of each turn is what lets you
+       chain turns without lifting. */
+    if (commitVec(S, dx, dy)) { S.ox = pt.x; S.oy = pt.y; }
+
+    /* The nub snaps to the committed direction at full throw rather than
+       tracking the thumb. Showing a diagonal would be showing a direction the
+       game cannot accept. */
+    const throwR = S.r * 0.62;
+    S.nub.style.transform = 'translate3d(' +
+      (DX[S.lastDir] * throwR) + 'px,' + (DY[S.lastDir] * throwR) + 'px,0)';
   }
 
-  function stickUp(S, e) {
+  function padUp(S, e) {
     if (S.id !== e.pointerId) return;
-    releaseStick(S);
+    releasePad(S);
   }
 
-  function releaseStick(S) {
+  function releasePad(S) {
     const pid = S.id;
     S.id = null;
-    S.pendingSide = false;
     if (pid !== null) { try { S.gut.releasePointerCapture(pid); } catch (err) { } }
-    S.stick.classList.remove('is-drag', 'is-live');
-    S.stick.style.transform = 'translate3d(0,0,0)';
-    S.nub.style.transform = 'translate3d(0,0,0)';
-    S.cx = S.homeX; S.cy = S.homeY;
-    S.ox = S.homeX; S.oy = S.homeY;
+    S.dragging = false;
     S.lastDir = -1;
-    /* No handoff to the other stick: only one can hold a pointer at a time
-       now, by construction in stickDown. */
+    if (S.pad) S.pad.classList.remove('is-hot', 'is-dragging');
+    S.stick.classList.remove('is-live', 'is-drag');
+    S.nub.style.transform = 'translate3d(0,0,0)';
     /* direction stays latched — releasing does not stop the taco */
   }
 
   function mkStick(side) {
     const gut = side === 'l' ? el.gutL : el.gutR;
     const stick = gut.querySelector('.cg-stick');
+    const pad = gut.querySelector('.cg-pad');
+    const arms = [];
+    if (pad) {
+      arms[UP] = pad.querySelector('.cg-pu');
+      arms[LEFT] = pad.querySelector('.cg-pl');
+      arms[DOWN] = pad.querySelector('.cg-pd');
+      arms[RIGHT] = pad.querySelector('.cg-pr');
+    }
     const S = {
-      side: side, gut: gut, stick: stick, nub: stick.querySelector('.cg-nub'),
-      id: null, homeX: 0, homeY: 0, cx: 0, cy: 0, ox: 0, oy: 0, r: 60, lastDir: -1, pendingSide: false,
-      downX: 0, downY: 0, downT: 0, committed: false, lx: 0, ly: 0
+      side: side, gut: gut, stick: stick, pad: pad, arms: arms,
+      nub: stick.querySelector('.cg-nub'),
+      id: null, ox: 0, oy: 0, r: 60, lastDir: -1, dragging: false,
+      padX: 0, padY: 0, padR: 74
     };
     sticks[side] = S;
-    gut.addEventListener('pointerdown', function (e) { stickDown(S, e); });
-    gut.addEventListener('pointermove', function (e) { stickMove(S, e); });
-    gut.addEventListener('pointerup', function (e) { stickUp(S, e); });
-    gut.addEventListener('pointercancel', function (e) { stickUp(S, e); });
+    gut.addEventListener('pointerdown', function (e) { padDown(S, e); });
+    gut.addEventListener('pointermove', function (e) { padMove(S, e); });
+    gut.addEventListener('pointerup', function (e) { padUp(S, e); });
+    gut.addEventListener('pointercancel', function (e) { padUp(S, e); });
   }
 
   /* swipe on the playfield, coexisting with the sticks */
   let swipe = null;
   function fieldDown(e) {
-    swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0, done: false };
+    swipe = { id: e.pointerId, ax: e.clientX, ay: e.clientY, moved: 0, lastDir: -1 };
     if (e.cancelable && inputMode === 'touch') e.preventDefault();
     tapStart();
   }
+  /* Two things were wrong with this and both read to a player as "the game
+     ignored me".
+
+     One: it latched after a single direction, so a swipe up-then-right in one
+     gesture threw the second turn away. In a maze you chain turns constantly,
+     and lifting between every one is not how anybody swipes.
+
+     Two: it demanded one axis beat the other by 1.5x, which left a 22.6-degree
+     dead wedge on each diagonal — 90 degrees of the full circle, a quarter of
+     every possible swipe, silently discarded. A four-way game has no diagonals
+     to disambiguate; the dominant axis simply wins. Stickiness to the
+     direction already committed is what stops it flickering near 45 degrees,
+     the same hysteresis the gutter pads use. */
   function fieldMove(e) {
     if (!swipe || swipe.id !== e.pointerId) return;
-    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+    const dx = e.clientX - swipe.ax, dy = e.clientY - swipe.ay;
     swipe.moved = Math.hypot(dx, dy);
-    if (!swipe.done && swipe.moved > 24) {
-      const ax = Math.abs(dx), ay = Math.abs(dy);
-      let d = -1;
-      if (ax > 1.5 * ay) d = dx > 0 ? RIGHT : LEFT;
-      else if (ay > 1.5 * ax) d = dy > 0 ? DOWN : UP;
-      if (d >= 0) { swipe.done = true; P.want = d; setChev(d); }
-    }
+    if (swipe.moved < 24) return;
+    /* Re-anchor at each turn, so the next one in the same gesture is measured
+       from where the last was committed rather than from where the finger
+       first landed — otherwise a long first leg leaves a vector no later turn
+       can beat. */
+    if (commitVec(swipe, dx, dy)) { swipe.ax = e.clientX; swipe.ay = e.clientY; }
   }
   function fieldUp(e) { if (swipe && swipe.id === e.pointerId) swipe = null; }
 
@@ -1947,7 +1986,7 @@
     else if (k === 'ArrowRight' || k === 'd' || k === 'D') d = RIGHT;
     if (k !== 'Tab') setInputMode('desktop');
     if (d >= 0) {
-      P.want = d; setChev(d);
+      setDir(d);
       if (e.cancelable) e.preventDefault();
       if (state === 'attract') startRun();
       else if (paused) setPaused(false);
@@ -2116,14 +2155,13 @@
     el.shell.classList.add(inputMode === 'touch' ? 'cg-touch' : 'cg-desktop');
 
     readBest();
-    readStickSide();
     loadSprites();
     resetPellets();
     placeActors(true);
     mkStick('l'); mkStick('r');
     buildLegend();
     layout();
-    paintHud(); paintLives(); updateHint(); attractCard(); setChev(LEFT);
+    paintHud(); paintLives(); updateHint(); attractCard(); setChev(LEFT); lightArm(LEFT);
     el.sound.textContent = '✕';
     el.pause.textContent = '❚❚';
 
