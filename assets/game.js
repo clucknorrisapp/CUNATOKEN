@@ -174,6 +174,49 @@
   function clamp(a, v, b) { return v < a ? a : v > b ? b : v; }
 
   let mazeCan = null, mazeCtx = null, pulseCan = null, pulseCtx = null;
+  let pelletCan = null, pelletCtx = null;
+
+  /* ───────────────────── sprite atlas ─────────────────────
+     One WebP, nine 144px cells, drawn art rather than canvas paths. Every
+     draw falls back to the path version if the atlas has not arrived — an
+     older browser without WebP, a blocked request, anything. The game is
+     fully playable either way; it just looks hand-drawn instead of rendered. */
+  const SPR = {
+    img: null, ready: false, cell: 144,
+    map: { open: [0,0], closed: [1,0], power: [2,0], pellet: [3,0], jeet: [4,0],
+           ruggy: [0,1], fudd: [1,1], paper: [2,1], fright: [3,1] }
+  };
+
+  function loadSprites() {
+    try {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = function () {
+        SPR.img = img; SPR.ready = true;
+        pelletDirty = true;
+        /* the HUD icons were painted before this arrived */
+        try { paintLives(); buildLegend(); } catch (e) { }
+      };
+      img.onerror = function () { SPR.ready = false; };
+      img.src = 'assets/sprites.webp';
+    } catch (e) { SPR.ready = false; }
+  }
+
+  /* size is the sprite's box in css px. flip mirrors horizontally, which is
+     how the player faces left without being drawn upside down. */
+  function drawSprite(g, name, cx, cy, size, rot, flip, alpha) {
+    if (!SPR.ready) return false;
+    const c = SPR.map[name]; if (!c) return false;
+    const N = SPR.cell;
+    g.save();
+    g.translate(cx, cy);
+    if (rot) g.rotate(rot);
+    if (flip) g.scale(-1, 1);
+    if (alpha != null) g.globalAlpha = alpha;
+    g.drawImage(SPR.img, c[0] * N, c[1] * N, N, N, -size / 2, -size / 2, size, size);
+    g.restore();
+    return true;
+  }
 
   function layout() {
     const shell = el.shell;
@@ -568,6 +611,8 @@
   }
 
   const CH_FILL = [C.red, C.pinkDeep, C.mint, C.cream2];
+  /* chaser index -> atlas cell; kind is an index, not a name */
+  const CH_SPRITE = ['jeet', 'ruggy', 'fudd', 'paper'];
   const CH_LW = [3, 3, 3, 3.5];
 
   function drawChaser(g, kind, cx, cy, T, o) {
@@ -1245,6 +1290,24 @@
         garnishPath.arc(cx - r * 0.22, cy - r * 0.22, gr, 0, 6.2832);
       }
     }
+
+    /* and the sprite version of the same board */
+    if (SPR.ready) {
+      const W = COLS * TILE, H = ROWS * TILE;
+      if (!pelletCan) { pelletCan = document.createElement('canvas'); }
+      if (pelletCan.width !== Math.round(W * DPR) || pelletCan.height !== Math.round(H * DPR)) {
+        pelletCan.width = Math.round(W * DPR); pelletCan.height = Math.round(H * DPR);
+      }
+      pelletCtx = pelletCan.getContext('2d');
+      pelletCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      pelletCtx.clearRect(0, 0, W, H);
+      const sz = TILE * 0.92;
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+        if (pellets[x + y * COLS] !== 1) continue;
+        drawSprite(pelletCtx, 'pellet', (x + 0.5) * TILE, (y + 0.5) * TILE, sz, 0, false);
+      }
+    }
+
     pelletDirty = false;
   }
 
@@ -1267,16 +1330,24 @@
 
     /* pellets — one batched path, one fill */
     if (pelletDirty) pelletBuild();
-    if (!shellGrad) {
-      shellGrad = g.createLinearGradient(0, 0, 0, T * 1.2);
-      shellGrad.addColorStop(0, C.cream2);
-      shellGrad.addColorStop(1, '#e8b877');
+
+    /* Sprite pellets are baked into a layer on the same dirty flag that the
+       batched paths use, so 200-odd tacos still cost one drawImage a frame
+       rather than 200. */
+    if (SPR.ready && pelletCan) {
+      g.drawImage(pelletCan, 0, 0, W, H);
+    } else {
+      if (!shellGrad) {
+        shellGrad = g.createLinearGradient(0, 0, 0, T * 1.2);
+        shellGrad.addColorStop(0, C.cream2);
+        shellGrad.addColorStop(1, '#e8b877');
+      }
+      g.fillStyle = shellGrad;
+      g.fill(pelletPath);
+      if (T >= 13) { g.fillStyle = C.pink; g.fill(fillingPath); }
+      if (T >= 18) { g.fillStyle = C.mint; g.fill(garnishPath); }
+      if (T >= 19) { g.strokeStyle = C.ink; g.lineWidth = 1.2; g.stroke(pelletPath); }
     }
-    g.fillStyle = shellGrad;
-    g.fill(pelletPath);
-    if (T >= 13) { g.fillStyle = C.pink; g.fill(fillingPath); }
-    if (T >= 18) { g.fillStyle = C.mint; g.fill(garnishPath); }
-    if (T >= 19) { g.strokeStyle = C.ink; g.lineWidth = 1.2; g.stroke(pelletPath); }
 
     /* Energizers: a full loaded taco, pulsing. The lips used to play this
        part, but the lips are the player now — so the big one on the board is
@@ -1284,7 +1355,10 @@
     const puls = RM ? 1.05 : 1.0 + 0.12 * (0.5 + 0.5 * Math.sin(clock * Math.PI * 2 * 1.4));
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (pellets[x + y * COLS] !== 2) continue;
-      drawLoadedTaco(g, (x + 0.5) * T, (y + 0.5) * T, T, puls);
+      const ex = (x + 0.5) * T, ey = (y + 0.5) * T;
+      if (!drawSprite(g, 'power', ex, ey, T * 1.20 * puls, 0, false)) {
+        drawLoadedTaco(g, ex, ey, T, puls);
+      }
     }
 
     if (bonusOn && state === 'play') drawSideOrder(g, (BONUS_TILE.x + 0.5) * T, (BONUS_TILE.y + 0.5) * T, T, course);
@@ -1298,7 +1372,7 @@
       for (let k = 0; k < 4; k++) {
         const c = chasers[k];
         if (c.mode === 'eyes') continue;
-        drawChaser(g, c.kind, (c.x + 0.5) * T, (c.y + 0.5) * T, T, { shadow: true, hemPh: clock * 6 + c.phase });
+        if (!SPR.ready) drawChaser(g, c.kind, (c.x + 0.5) * T, (c.y + 0.5) * T, T, { shadow: true, hemPh: clock * 6 + c.phase });
       }
     }
 
@@ -1319,17 +1393,32 @@
     }
     const px = (P.x + 0.5) * T, py = (P.y + 0.5) * T + drop * T;
 
-    if (showTaco) drawMouth(g, px, py, P.dir, open, { shadow: true, spin: spin, shrink: shrink });
+    /* The atlas art carries its own outline and shading, so it needs no
+       separate silhouette pass; the path version still does. */
+    if (showTaco && !SPR.ready) {
+      drawMouth(g, px, py, P.dir, open, { shadow: true, spin: spin, shrink: shrink });
+    }
 
     /* art pass */
     if (showChasers) {
       for (let k = 0; k < 4; k++) {
         const c = chasers[k];
-        drawChaser(g, c.kind, (c.x + 0.5) * T, (c.y + 0.5) * T, T, {
-          mode: c.mode, fright: c.fright, flash: flash,
-          hemPh: clock * 6 + c.phase,
-          tdx: P.x - c.x, tdy: P.y - c.y
-        });
+        const ccx = (c.x + 0.5) * T, ccy = (c.y + 0.5) * T;
+        /* Eyes-only (eaten, heading home) stays path-drawn — a cutout of just
+           the eyes is not worth a tenth atlas cell. */
+        let done = false;
+        if (c.mode !== 'eyes') {
+          const name = c.fright ? 'fright' : CH_SPRITE[c.kind];
+          done = drawSprite(g, name, ccx, ccy, T * 1.26, 0, false,
+            c.fright && flash ? 0.55 : 1);
+        }
+        if (!done) {
+          drawChaser(g, c.kind, ccx, ccy, T, {
+            mode: c.mode, fright: c.fright, flash: flash,
+            hemPh: clock * 6 + c.phase,
+            tdx: P.x - c.x, tdy: P.y - c.y
+          });
+        }
       }
     }
     if (dying && !RM && killer === 1 && stateT < 0.2) {
@@ -1340,7 +1429,11 @@
     }
     if (showTaco) {
       const wink = state === 'play' && !dying && (clock % 3.4) < 0.24;
-      drawMouth(g, px, py, P.dir, open, { spin: spin, shrink: shrink, tongue: frightT > 0, fright: frightT > 0, wink: wink });
+      const chomp = open > MAX_OPEN * 0.45 ? 'open' : 'closed';
+      const rot = (P.dir === UP ? -Math.PI / 2 : P.dir === DOWN ? Math.PI / 2 : 0) + spin;
+      if (!drawSprite(g, chomp, px, py, T * 1.30 * shrink, rot, P.dir === LEFT)) {
+        drawMouth(g, px, py, P.dir, open, { spin: spin, shrink: shrink, tongue: frightT > 0, fright: frightT > 0, wink: wink });
+      }
     }
 
     /* floating score numbers — the only text the canvas draws */
@@ -1388,8 +1481,10 @@
         cv.width = s * 2; cv.height = s * 2; cv.style.width = s + 'px'; cv.style.height = s + 'px';
         const g = cv.getContext('2d');
         g.setTransform(2, 0, 0, 2, 0, 0);
-        drawMouth(g, s / 2, s / 2 - 1, RIGHT, 0.3, { tile: s * 0.92, shadow: true });
-        drawMouth(g, s / 2, s / 2 - 1, RIGHT, 0.3, { tile: s * 0.92 });
+        if (!drawSprite(g, 'open', s / 2, s / 2, s * 0.98, 0, false)) {
+          drawMouth(g, s / 2, s / 2 - 1, RIGHT, 0.3, { tile: s * 0.92, shadow: true });
+          drawMouth(g, s / 2, s / 2 - 1, RIGHT, 0.3, { tile: s * 0.92 });
+        }
         box.appendChild(cv);
       }
       box.setAttribute('aria-label', lives + ' tacos left');
@@ -1898,8 +1993,10 @@
       cv.width = s * 2; cv.height = s * 2; cv.style.width = s + 'px'; cv.style.height = s + 'px';
       const g = cv.getContext('2d');
       g.setTransform(2, 0, 0, 2, 0, 0);
-      drawChaser(g, k, s / 2, s / 2, s * 0.92, { shadow: true });
-      drawChaser(g, k, s / 2, s / 2, s * 0.92, { mode: 'normal', tdx: -1, tdy: 0 });
+      if (!drawSprite(g, CH_SPRITE[k], s / 2, s / 2, s * 0.98, 0, false)) {
+        drawChaser(g, k, s / 2, s / 2, s * 0.92, { shadow: true });
+        drawChaser(g, k, s / 2, s / 2, s * 0.92, { mode: 'normal', tdx: -1, tdy: 0 });
+      }
     }
   }
 
@@ -1928,6 +2025,7 @@
     el.shell.classList.add(inputMode === 'touch' ? 'cg-touch' : 'cg-desktop');
 
     readBest();
+    loadSprites();
     resetPellets();
     placeActors(true);
     mkStick('l'); mkStick('r');

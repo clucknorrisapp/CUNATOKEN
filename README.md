@@ -246,8 +246,31 @@ lethal in a pincer) and PAPER (chases until he is close, then bottles it).
 Score is CALORIES, never tokens — nothing in the game earns anyone anything,
 and the copy is written to keep it that way.
 
-Canvas 2D, no libraries, no build step, no image assets: every sprite is drawn
-in code. Three of them are worth knowing about:
+Canvas 2D, no libraries, no build step.
+
+### The sprite atlas
+
+`assets/sprites.webp` is one 720x288 WebP holding nine 144px cells — player
+mouth open, mouth closed, power taco, pellet taco, the four chasers, and the
+frightened ghost. 44KB, one request, generated art rather than canvas paths.
+`SPR.map` in `game.js` is the cell lookup; `drawSprite()` blits one cell with
+optional rotation and horizontal mirror.
+
+Note `kind` on a chaser is a numeric index, not a name — `CH_SPRITE` maps it to
+the atlas cell. Passing `c.kind` straight to `drawSprite` silently falls
+through to the path art, which looks like nothing happened.
+
+Pellets are baked into an offscreen layer (`pelletCan`) on the existing
+`pelletDirty` flag, so 200-odd tacos cost one `drawImage` a frame rather than
+200. Energizers pulse, so those are drawn individually — there are only four.
+
+**Every sprite draw falls back to the path version.** `drawSprite` returns
+false when the atlas has not loaded, and each call site draws the canvas art
+instead. A browser without WebP, a blocked request, a 404 — the game still
+plays, just hand-drawn instead of illustrated. This is tested by aborting the
+atlas request; do not remove the fallbacks.
+
+The path art below is therefore still live code, not legacy:
 
 - `drawMouth` is the player: a dark mouth cavity, then the tongue, then two
   fat lip halves hinged at the back corner and rotated apart by `open` — the
