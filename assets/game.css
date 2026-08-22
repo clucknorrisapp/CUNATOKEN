@@ -83,12 +83,20 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   min-height: 0;
 }
 #cuna-game.cg-desktop .cg-stick { display: none; }
-/* The ring only exists while a thumb is actually dragging. Left on screen
-   permanently it reads as the control — the thing you must go and find and
-   keep your thumb inside — which is exactly the habit that made this awkward
-   to hold on a tablet. */
-#cuna-game.cg-touch .cg-stick { display: block; opacity: 0; pointer-events: none; }
-#cuna-game.cg-touch .cg-stick.is-live { opacity: 1; }
+/* Each gutter shows one instrument and hides the other, so the two are never
+   stacked in the same place. Which side gets which is a stored preference —
+   handedness, nothing more; both are live either way. */
+#cuna-game.cg-touch .cg-stick { display: block; pointer-events: none; }
+#cuna-game.cg-touch .cg-gutter[data-ctl="pad"] .cg-stick { opacity: 0; }
+#cuna-game.cg-touch .cg-gutter[data-ctl="pad"] .cg-stick.is-live { opacity: 1; }
+#cuna-game.cg-touch .cg-gutter[data-ctl="stick"] .cg-stick { opacity: .62; }
+#cuna-game.cg-touch .cg-gutter[data-ctl="stick"] .cg-stick.is-live { opacity: 1; }
+#cuna-game.cg-touch .cg-gutter[data-ctl="stick"] .cg-pad { display: none; }
+
+/* On the stick side the ring is furniture and has to sit still enough to aim
+   for; on the pad side it only appears under a thumb mid-drag. Either way it
+   springs back to its printed home on release. */
+.cg-gutter[data-ctl="stick"] .cg-stick { transition: transform .18s cubic-bezier(.2,.9,.3,1), opacity .12s ease; }
 
 /* Both gutters are live, permanently, and identical. The stick no longer
    migrates between them: a cross is printed in each and either thumb can
@@ -183,6 +191,10 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
 }
 .cg-overlay[hidden] { display: none; }
 .cg-overlay.cg-pass { pointer-events: none; }
+/* The attract overlay deliberately lets taps fall through to the field so
+   that tapping anywhere starts the run. Anything genuinely interactive on it
+   has to opt back in, or it is simply not tappable. */
+.cg-overlay.cg-pass [data-act] { pointer-events: auto; }
 .cg-card {
   max-width: min(100%, 30rem);
   background: rgba(36, 4, 15, .9);
@@ -350,6 +362,32 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   border-radius: 50%; border: 3px solid var(--ink); box-shadow: var(--pop);
 }
 
+/* ─────────── control chooser ─────────── */
+
+.cg-swap {
+  /* Pinned to the bottom of the overlay, not placed in the card. In the card
+     it sat within 5px of the dead centre of an iPad screen — precisely where
+     a thumb lands to start the game — so tapping to play flipped your
+     controls instead. */
+  position: absolute; left: 50%; bottom: 10px;
+  transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .45rem .8rem;
+  font: inherit; font-size: .62rem; font-weight: 800; letter-spacing: .04em;
+  color: var(--cream); background: color-mix(in srgb, var(--plum-2) 82%, transparent);
+  border: 2px solid var(--ink); border-radius: 999px;
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+  /* The card above it is tap-to-start; this must not inherit that. */
+  touch-action: manipulation;
+}
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+  .cg-swap { background: rgba(82, 15, 51, .82); }
+}
+.cg-swap span { white-space: nowrap; }
+.cg-swap i { font-style: normal; font-size: .95rem; color: var(--pink); }
+.cg-swap:active { transform: translateX(-50%) translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+
 /* ─────────── the gutter pad ─────────── */
 
 /* A cross printed in the middle of each gutter. It is two things at once: a
@@ -417,7 +455,7 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   transition: transform .18s cubic-bezier(.2, .9, .3, 1);
   touch-action: none;
 }
-.cg-stick.is-drag { transition: opacity .1s ease; }
+.cg-stick.is-drag, .cg-gutter[data-ctl="stick"] .cg-stick.is-drag { transition: opacity .1s ease; }
 .cg-ring {
   position: absolute; inset: 0; border-radius: 50%;
   background: color-mix(in srgb, var(--plum-2) 88%, transparent);

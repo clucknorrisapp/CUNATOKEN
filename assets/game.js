@@ -29,6 +29,8 @@
      the game's new title would silently reset every player's personal best,
      which is a real cost for no benefit — nobody sees this. */
   const BEST_KEY = 'cuna_munch_best';
+  /* Which gutter holds the joystick; the other holds the d-pad cross. */
+  const CTL_KEY = 'cuna_ctl_side';
 
   /* speed table: [player, playerEating, chaser, frightened, tunnel] tiles/sec */
   function speeds(course) {
@@ -1521,11 +1523,21 @@
 
   function attractCard() {
     const touch = inputMode === 'touch';
+    /* The swap is offered, not imposed. Both controls work whichever way it
+       is set, so this is a handedness preference rather than a mode you have
+       to get right before you are allowed to play. */
+    const swap = touch
+      ? '<button class="cg-swap" type="button" data-act="swapctl">' +
+        '<span>' + (ctlSide === 'l' ? 'STICK LEFT' : 'D-PAD LEFT') + '</span>' +
+        '<i>&#8644;</i>' +
+        '<span>' + (ctlSide === 'l' ? 'D-PAD RIGHT' : 'STICK RIGHT') + '</span>' +
+        '</button>'
+      : '';
     showOverlay(
       '<div class="cg-card cg-attract">' +
       '<p class="cg-big">TONGUE RUSH</p>' +
       '<p class="cg-pill">' + (touch ? 'TAP TO EAT' : 'PRESS ANY KEY') + '</p>' +
-      '<p class="cg-sub">gonna eat that chart</p></div>');
+      '<p class="cg-sub">gonna eat that chart</p></div>' + swap);
   }
 
   function pauseCard() {
@@ -1687,6 +1699,32 @@
 
   const sticks = {};
 
+  /* Two different instruments, one in each gutter, both live at the same
+     time. Nobody has to choose before playing and nothing has to be
+     discovered in a menu: you reach for whichever one you like and it works.
+     The swap on the start card exists only for handedness — a right-hander
+     one-handed on a phone wants the stick under the thumb that is already
+     there. Defaults to the stick on the right. */
+  let ctlSide = 'r';
+
+  function setCtlSide(side) {
+    if (side !== 'l' && side !== 'r') return;
+    ctlSide = side;
+    ['l', 'r'].forEach(function (k) {
+      const S = sticks[k];
+      if (!S) return;
+      S.mode = (k === ctlSide) ? 'stick' : 'pad';
+      S.gut.setAttribute('data-ctl', S.mode);
+    });
+    try { localStorage.setItem(CTL_KEY, side); } catch (e) { }
+  }
+
+  function readCtlSide() {
+    let v = 'r';
+    try { const st = localStorage.getItem(CTL_KEY); if (st === 'l' || st === 'r') v = st; } catch (e) { }
+    setCtlSide(v);
+  }
+
   function placeSticks() {
     const portrait = mqPortrait.matches;
     const d = portrait
@@ -1716,10 +1754,11 @@
         S.pad.style.left = (cx - S.padR) + 'px';
         S.pad.style.top = (cy - S.padR) + 'px';
       }
+      S.homeX = cx; S.homeY = cy;
+      S.stick.style.left = (cx - r) + 'px';
+      S.stick.style.top = (cy - r) + 'px';
       if (S.id === null) {
         S.ox = cx; S.oy = cy;
-        S.stick.style.left = (cx - r) + 'px';
-        S.stick.style.top = (cy - r) + 'px';
         S.stick.style.transform = 'translate3d(0,0,0)';
       }
     });
@@ -1793,6 +1832,7 @@
      the pad's own box is what decides, so this stays correct whatever
      placeSticks did with the layout. */
   function armAt(S, px, py) {
+    if (S.mode !== 'pad') return -1;
     const half = S.padR;
     const x = px - S.padX, y = py - S.padY;
     if (Math.abs(x) > half || Math.abs(y) > half) return -1;
@@ -1840,11 +1880,13 @@
     S.lastDir = arm;
     if (arm >= 0) setDir(arm);
 
-    /* The ring is drawn under the thumb, wherever that is, rather than
-       sitting in a fixed spot you have to go and find. */
-    S.stick.style.left = (pt.x - S.r) + 'px';
-    S.stick.style.top = (pt.y - S.r) + 'px';
-    S.stick.style.transform = 'translate3d(0,0,0)';
+    /* The ring re-centres under the thumb instead of making you hit it. It is
+       offset by transform rather than moved outright so that releasing lets
+       it spring back to its printed home — on the stick side that home is
+       what makes it findable in the first place. */
+    S.stick.classList.add('is-drag');
+    S.stick.style.transform =
+      'translate3d(' + (pt.x - S.homeX) + 'px,' + (pt.y - S.homeY) + 'px,0)';
     S.nub.style.transform = 'translate3d(0,0,0)';
     tapStart();
   }
@@ -1859,7 +1901,7 @@
 
     if (!S.dragging) {
       S.dragging = true;
-      S.stick.classList.add('is-live', 'is-drag');
+      S.stick.classList.add('is-live');
       if (S.pad) S.pad.classList.add('is-dragging');
       /* A drag that began on an arm should be free to turn away from it, so
          the arm's direction stops acting as the hysteresis anchor. */
@@ -1894,6 +1936,7 @@
     S.lastDir = -1;
     if (S.pad) S.pad.classList.remove('is-hot', 'is-dragging');
     S.stick.classList.remove('is-live', 'is-drag');
+    S.stick.style.transform = 'translate3d(0,0,0)';
     S.nub.style.transform = 'translate3d(0,0,0)';
     /* direction stays latched — releasing does not stop the taco */
   }
@@ -1913,7 +1956,7 @@
       side: side, gut: gut, stick: stick, pad: pad, arms: arms,
       nub: stick.querySelector('.cg-nub'),
       id: null, ox: 0, oy: 0, r: 60, lastDir: -1, dragging: false,
-      padX: 0, padY: 0, padR: 74
+      homeX: 0, homeY: 0, padX: 0, padY: 0, padR: 74, mode: 'pad'
     };
     sticks[side] = S;
     gut.addEventListener('pointerdown', function (e) { padDown(S, e); });
@@ -1925,6 +1968,10 @@
   /* swipe on the playfield, coexisting with the sticks */
   let swipe = null;
   function fieldDown(e) {
+    /* The overlay sits inside the field, so a press on one of its buttons
+       reaches this handler too. Without the guard, tapping the control
+       chooser would start the run out from under you on the same touch. */
+    if (e.target && e.target.closest && e.target.closest('[data-act]')) return;
     swipe = { id: e.pointerId, ax: e.clientX, ay: e.clientY, moved: 0, lastDir: -1 };
     if (e.cancelable && inputMode === 'touch') e.preventDefault();
     tapStart();
@@ -2159,6 +2206,7 @@
     resetPellets();
     placeActors(true);
     mkStick('l'); mkStick('r');
+    readCtlSide();
     buildLegend();
     layout();
     paintHud(); paintLives(); updateHint(); attractCard(); setChev(LEFT); lightArm(LEFT);
@@ -2175,6 +2223,12 @@
       const b = e.target.closest ? e.target.closest('[data-act]') : null;
       if (!b) return;
       const a = b.getAttribute('data-act');
+      if (a === 'swapctl') {
+        setCtlSide(ctlSide === 'l' ? 'r' : 'l');
+        attractCard();
+        toast(ctlSide === 'l' ? 'STICK ON THE LEFT' : 'STICK ON THE RIGHT');
+        return;
+      }
       if (a === 'resume') setPaused(false);
       else if (a === 'sound') setSound(!soundOn);
       else if (a === 'exit') { exitImmersive(); backToSite(); }

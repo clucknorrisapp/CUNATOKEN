@@ -298,10 +298,11 @@ The path art below is therefore still live code, not legacy:
 `assets/app.js` which is deliberately ES5-style.
 
 **Controls.** Desktop: arrows or WASD, P to pause, M to mute, Space/Enter to
-start. Touch: a cross is printed in **both** gutters and both are always live.
-Tap an arm of either cross, or drag/swipe anywhere in either gutter, or swipe
-on the playfield itself — all three drive the same thing and all work at once,
-with no mode to pick and nothing to remember.
+start. Touch: a **d-pad cross in one gutter and a joystick in the other**,
+both live at the same time, plus swipe on the playfield. Nobody has to choose
+before playing — you reach for whichever instrument you prefer and it works.
+The `⇄` chip on the start card swaps which side each is on and remembers it
+(`cuna_ctl_side`); that is handedness only, never a mode gate.
 
 Both gutters being permanently live is the design, not an oversight. The
 scheme it replaced had a single stick that migrated to whichever gutter you
@@ -312,8 +313,23 @@ steering from the thumb mid-drag. With both sides live and neither moving,
 there is no "active" side to steal, and a stationary touch simply never
 exceeds the dead zone, so a resting hand commits nothing.
 
+The two gutters run the *same* handler; only what is drawn differs, and
+`armAt` returns -1 on the stick side so there are no invisible tap targets.
+The ring re-centres under the thumb on press and springs back to its printed
+home on release — on the stick side that home is what makes it findable, and
+on the pad side the ring is hidden until a drag actually starts.
+
 The cross is mostly an affordance. A bare swipe surface tests perfectly and
 still fails in the wild, because nothing tells anyone it is there.
+
+The swap chip is pinned to the bottom of the overlay rather than placed in
+the card. In the card it sat within 5px of the dead centre of an iPad screen,
+which is exactly where a thumb lands to start a game, so tapping to play
+flipped your controls instead. Anything interactive on the attract overlay
+also needs `pointer-events: auto`: that overlay is `cg-pass` so taps fall
+through to the field to start the run, and a button on it is otherwise inert.
+`fieldDown` bails on any `[data-act]` target for the same reason — without it
+the same touch that hits a button also starts the game underneath it.
 
 Four things about the input are easy to break and worth knowing:
 
