@@ -8,7 +8,7 @@ public APIs.
 index.html          main page: hero, burn tracker, bag checker, stats, community
 buy.html            the Jupiter swap widget, on its own so it can breathe
 safety.html         the long-form "is it safe?" answers
-game.html           MUNCHALINGUS, the arcade game
+game.html           TONGUE RUSH, the arcade game
 assets/game.css     game-only styles (loaded after styles.css)
 assets/game.js      the whole game in one IIFE
 assets/styles.css   sticker-book styles, shared by all three pages
@@ -235,7 +235,7 @@ Everything you'd want to change lives in the `CONFIG` block at the top of
 The mint and pool addresses are also in `CONFIG`; the buy link, chart link and
 Solscan link are all derived from the mint so there's one place to change it.
 
-## MUNCHALINGUS (game.html)
+## TONGUE RUSH (game.html)
 
 A Pac-Man homage. The chart is the maze, the player is the lips-and-tongue from
 the coin, the pellets are tiny tacos, the power-up is a loaded taco, and the
@@ -303,7 +303,8 @@ A swipe on the playfield works too.
 
 Both gutters stay touch-active even though only one shows a stick — pressing
 the empty one moves the stick there and remembers the choice in localStorage
-(`cuna_munch_side`, defaulting to the right). That is what serves left- and
+(`cuna_munch_side` — the storage keys predate the rename and keep their old
+names so nobody's saved best is reset; defaulting to the right). That is what serves left- and
 right-handers without anyone reaching across the maze.
 
 It was twin sticks first, one per gutter, both doing the same job. Two

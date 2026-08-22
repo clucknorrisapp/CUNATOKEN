@@ -1,4 +1,4 @@
-/* MUNCHALINGUS — the $CUNA chart-eating game.
+/* TONGUE RUSH — the $CUNA chart-eating game.
    One file, no deps, no build step. Canvas 2D, everything drawn in code.
    It is a toy. It awards nothing. */
 (function () {
@@ -25,6 +25,9 @@
   const DY = [-1, 0, 1, 0];
   const OPP = [2, 3, 0, 1];
   const TOTAL_EDIBLES = 212;
+  /* Storage keys keep their original names on purpose. Renaming them to match
+     the game's new title would silently reset every player's personal best and
+     stick side, which is a real cost for no benefit — nobody sees these. */
   const BEST_KEY = 'cuna_munch_best';
   const SIDE_KEY = 'cuna_munch_side';
 
@@ -1521,7 +1524,7 @@
     const touch = inputMode === 'touch';
     showOverlay(
       '<div class="cg-card cg-attract">' +
-      '<p class="cg-big">MUNCHALINGUS</p>' +
+      '<p class="cg-big">TONGUE RUSH</p>' +
       '<p class="cg-pill">' + (touch ? 'TAP TO EAT' : 'PRESS ANY KEY') + '</p>' +
       '<p class="cg-sub">gonna eat that chart</p></div>');
   }
@@ -1585,7 +1588,7 @@
   }
 
   function shareLabel(btn) {
-    const txt = 'Ate ' + score.toLocaleString('en-US') + ' calories off the chart in MUNCHALINGUS. Course ' +
+    const txt = 'Ate ' + score.toLocaleString('en-US') + ' calories off the chart in TONGUE RUSH. Course ' +
       course + '. gonna eat that chart. ' + location.origin + location.pathname;
     const done = function () {
       const old = btn.textContent; btn.textContent = 'COPIED';
