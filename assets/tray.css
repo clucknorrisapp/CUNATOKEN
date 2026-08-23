@@ -1,0 +1,86 @@
+/* ============================================================
+   TACO TRAY — only the bits game.css does not already do.
+   Loaded after game.css, so everything here is either a new
+   class or a deliberate override of one of its rules.
+   ============================================================ */
+
+/* A match-three has no stick and no cross, so on touch the two gutters are
+   empty margins. Collapse them and give the tray the whole width — this is
+   the same trade `#cuna-game.cg-whack.cg-touch` makes in game.css, restated
+   here because that file belongs to the other games and this one must not
+   reach into it. Keep the two in step if either changes.
+
+   The field row is `1fr` and the HUD row `auto`. Two `auto` rows looked right
+   on the page and wrong in immersive play: the shell goes `position: fixed;
+   inset: 0`, both auto tracks then stretch by the same amount, and the tray
+   ended up pinned to the bottom of the phone with the HUD marooned a third of
+   the way down. One flexible track takes all the slack and `.cg-field`'s own
+   `place-items: center` puts the tray in the middle of it. */
+#cuna-game.cg-tray.cg-touch {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "hud" "field";
+  min-height: 0;
+}
+#cuna-game.cg-tray.cg-touch .cg-gutter { display: none; }
+#cuna-game.cg-tray .cg-field { padding: 6px 0 10px; }
+
+/* game.css keeps the three-column desktop layout down to 560px, which suits a
+   maze that is happy at 300px. A seven-wide tray is not: below about 1000px
+   the two 240px gutters leave the field less than 400px and the tiles stop
+   being aimable, so this game drops its panels a lot earlier and takes the
+   whole width instead.
+
+   `boardSide()` in tray.js asks matchMedia for exactly this breakpoint to
+   decide whether to reserve gutter room. If the number here changes, change
+   it there too — they are one decision written twice. */
+@media (max-width: 1000px) {
+  #cuna-game.cg-tray.cg-desktop {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "hud" "field";
+    min-height: 0;
+  }
+  #cuna-game.cg-tray.cg-desktop .cg-gutter { display: none; }
+}
+
+/* game.css hides the nav, the footer, the intro, the hint line and the
+   fineprint while a run is on, but not the "more games" strip — and this
+   shell is translucent, so in immersive play two game cards were visible
+   straight through the tray. Hidden here rather than in game.css because
+   that file belongs to the other three games; see the report note. */
+
+/* Moves is the pressure gauge, so it sits hard right, away from the three
+   counters that only ever go up. */
+#cuna-game.cg-tray .cg-stat-clock { margin-left: auto; }
+
+/* Four stats plus the sound button is one more than JEET WHACK carries. On a
+   320px screen that is genuinely tight, so the chain counter — the one you
+   can also read off the board — goes first rather than letting the row
+   overflow into the shell's `overflow: hidden` and get sliced. */
+@media (max-width: 359px) {
+  #cuna-game.cg-tray .cg-hud .cg-stat:nth-child(3) { display: none; }
+}
+
+/* The tray is drawn on the canvas; the only chrome around it is the one
+   game.css already gives #cg-canvas. */
+#cuna-game.cg-tray #cg-canvas { border-radius: 14px; }
+
+/* ─────────── attract card ─────────── */
+
+/* Two short lines of rules on the attract card. They read as part of the
+   card, not as a paragraph glued under it. */
+.cg-tray-rules {
+  margin: .55rem 0 0;
+  font-size: .72rem; line-height: 1.45; font-weight: 700;
+  color: var(--cream-2); opacity: .82;
+}
+
+/* ─────────── reduced motion ─────────── */
+
+/* The script already collapses every tween to a single frame when the user
+   asks for less motion; this just stops the CSS-side bob on the start pill,
+   which game.css only disables for `.cg-attract`. */
+@media (prefers-reduced-motion: reduce) {
+  #cuna-game.cg-tray .cg-pill { animation: none; }
+}

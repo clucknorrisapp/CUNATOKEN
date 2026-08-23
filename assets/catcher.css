@@ -1,0 +1,61 @@
+/* ============================================================
+   CUNA CUMMIN' FOR YA — the catcher's own styling.
+   Loaded after game.css, which supplies the shell, HUD, field,
+   overlay, cards, buttons and gutters. Only what is genuinely
+   new to this game lives here.
+   ============================================================ */
+
+/* The board is portrait — taller than it is wide — where the maze and the
+   whack grid are square. The field row therefore has real vertical slack to
+   give away in landscape, so pull the canvas off the HUD by a hair rather
+   than letting it sit flush against it. */
+.cg-catch .cg-field { padding: 4px 0 8px; }
+
+/* Four stats plus three lives plus two icons is one item too many for a
+   360px HUD, and the shell clips rather than scrolls. Streak is the one that
+   is also on the panel and in the toasts, so it is the one that goes. */
+@media (max-width: 430px) {
+  .cg-catch .cg-stat-streak { display: none; }
+}
+
+/* A caught chaser flashes the board. Done on the shell rather than in the
+   canvas so it also washes over the HUD and the gutters — the whole cabinet
+   flinches, which is much harder to miss mid-run than a tint behind the
+   falling sprites. */
+.cg-catch.is-hurt { animation: cgcatch-hurt .32s steps(2, end) 2; }
+@keyframes cgcatch-hurt {
+  from { box-shadow: var(--pop-lg), inset 0 0 0 2000px rgba(255, 46, 136, .20); }
+  to   { box-shadow: var(--pop-lg); }
+}
+
+/* Immersive play strips the shell's shadow, so the flash needs its own
+   keyframes there or the animation resolves to nothing. */
+body.cuna-playing .cg-catch.is-hurt { animation-name: cgcatch-hurt-flat; }
+@keyframes cgcatch-hurt-flat {
+  from { box-shadow: inset 0 0 0 2000px rgba(255, 46, 136, .20); }
+  to   { box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cg-catch.is-hurt,
+  body.cuna-playing .cg-catch.is-hurt { animation: none; }
+}
+
+/* The scoring panel gains a lives row the other games do not have, and
+   .cg-lives is written to shove itself to the right of a HUD. Inside a
+   .cg-prow it just needs to sit on the value side like any other figure. */
+.cg-catch .cg-prow .cg-lives { margin-left: 0; justify-content: flex-end; }
+
+/* The four-card strip wants an even 2x2 at every width the two-card version
+   of it is happy with. Nothing to add — game.css already does that — but the
+   fourth card is the arcade index rather than a game, so mark it quietly. */
+.cg-more .cg-morecard[href="games.html"] b { color: var(--pink-2); }
+
+/* Immersive play fixes the shell over the page, and the shell's background is
+   only 62% opaque, so anything left standing underneath reads straight
+   through it. game.css hides the nav, the footer, the intro, the hint and the
+   fine print for exactly that reason but not the more-games strip, whose
+   heading floats up through the top of the board mid-run. Scoped here rather
+   than fixed in game.css because this file is the only one that page loads
+   that nothing else does — the shared rule belongs in game.css and would fix
+   the same bleed on whack.html and twister.html. */

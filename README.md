@@ -303,9 +303,30 @@ Three of them, sharing one sprite atlas, one stylesheet and one input layer:
 
 | Page | Game | What it is |
 |---|---|---|
+| `games.html` | — | The arcade index. All nav "Games" links point here. |
 | `game.html` | TONGUE RUSH | Pac-Man. The maze, four chasers, courses. |
 | `twister.html` | TONGUE TWISTER | Snake. The tongue grows; a chaser turns up at length 8. |
 | `whack.html` | JEET WHACK | Whack-a-mole. 45 seconds, tap tacos, don't tap chasers. |
+| `catcher.html` | CUNA CUMMIN' FOR YA | Catcher. Lips at the bottom, tacos rain down, chasers do too. |
+| `tray.html` | TACO TRAY | Match-3. 7x7, five tile types, a 20-move budget. |
+
+Three of the five share `assets/controls.js`. JEET WHACK and TACO TRAY are
+pointer games and roll their own tap handling; both collapse the gutters on
+touch, since an empty gutter is worse than no gutter.
+
+Two things worth knowing about the later two:
+
+- CUNA CUMMIN' FOR YA needs a *release* signal, which `controls.js` does not
+  give it — that layer latches a direction after you let go, which is right
+  for the grid games and wrong for a catcher. Rather than fork it, the game
+  layers a keyup listener and a live-pointer count on top and zeroes the steer
+  when the last one lifts. `onDir` is still the only thing that sets a
+  direction, so the chevrons and d-pad arms light up as they do elsewhere.
+- TACO TRAY dropped `ruggy` from its tile set. `jeet` and `ruggy` are the same
+  ghost silhouette in two neighbouring warm hues, and at a 39px tile they read
+  as one type with a colour wobble. Five types, each on a flat coloured plate,
+  because three of the five are ghosts and the sprite alone is not a strong
+  enough cue at that size.
 
 `assets/controls.js` is the shared input layer and is the reason a second and
 third game were cheap. It was **extracted rather than copied**: same-axis
@@ -314,13 +335,27 @@ stealing the stick all took real debugging, and three private copies would
 have drifted apart the first time one of them was fixed. `game.js` was
 migrated onto it rather than left on its own copy.
 
-Both grid games size their board **from the viewport and the shell**, never
+Every game sizes its board **from the viewport and the shell**, never
 from the field. The field is a grid track that sizes to its content, so
 measuring it and then setting the canvas inside it is a feedback loop — every
 pass reads a slightly smaller box and writes a slightly smaller board. It
 converges on the minimum tile size, and both boards were 120px squares on half
 the devices tested before this was caught. Width is bounded by the *shell*
 (whose width comes from the page, not the canvas); height by the viewport.
+
+One more trap in the same family: `boardSide()` must not branch on
+*orientation* alone. A 768px-wide desktop window is landscape by that test but
+still reserves 2x240px of gutter, so handing the board the full shell width
+sliced its right-hand columns off behind `overflow: hidden` with the page
+never scrolling to give it away. Branch on a width media query and reserve the
+gutter minimum; never measure a gutter, because those are `1fr` tracks and
+measuring one re-creates the feedback loop.
+
+`body.cuna-playing` hides the page furniture during immersive play. The shell
+background is only 62% opaque, so anything left out of that list reads
+straight through the board — `.cg-more` was added to the pages and not to the
+list, and showed over the board on three of them. Anything new on a game page
+goes in that rule.
 
 JEET WHACK draws its targets at ~190px. The maze pellet sprite is drawn at
 ~16px in TONGUE RUSH and has no face, so blown up it is a featureless cream

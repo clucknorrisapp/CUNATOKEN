@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TONGUE TWISTER — $CUNA</title>
-<meta name="description" content="TONGUE TWISTER: a snake game where you are the $CUNA tongue and every taco makes you longer. Plays in the browser, on a phone or a keyboard.">
+<title>CUNA CUMMIN' FOR YA — $CUNA</title>
+<meta name="description" content="CUNA CUMMIN' FOR YA: tacos rain down, you are the lips at the bottom, and the chasers are falling too. Plays in the browser on a phone or a desktop.">
 <meta name="theme-color" content="#3D0A26">
 <link rel="icon" href="assets/logo.jpg">
 <link rel="apple-touch-icon" href="assets/logo.jpg">
 
-<link rel="canonical" href="https://cunatoken.com/twister.html">
+<link rel="canonical" href="https://cunatoken.com/catcher.html">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://cunatoken.com/twister.html">
+<meta property="og:url" content="https://cunatoken.com/catcher.html">
 <meta property="og:site_name" content="CUNALINGUS">
-<meta property="og:title" content="TONGUE TWISTER">
-<meta property="og:description" content="Eat tacos. Get longer. The only thing that can kill you is yourself.">
+<meta property="og:title" content="CUNA CUMMIN' FOR YA">
+<meta property="og:description" content="Tacos rain down. You are the lips at the bottom. Catch it.">
 <meta property="og:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="TONGUE TWISTER">
-<meta name="twitter:description" content="Eat tacos. Get longer. The only thing that can kill you is yourself.">
+<meta name="twitter:title" content="CUNA CUMMIN' FOR YA">
+<meta name="twitter:description" content="Tacos rain down. You are the lips at the bottom. Catch it.">
 <meta name="twitter:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,6 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/game.css">
+<link rel="stylesheet" href="assets/catcher.css">
 
 </head>
 <body>
@@ -64,20 +65,21 @@
   <section class="section">
 
     <div class="section-head">
-      <p class="hero-kicker">it only gets longer</p>
-      <h1 class="section-title">TONGUE TWISTER</h1>
-      <p class="section-sub">Eat tacos. Get longer. The only thing that can really kill you is yourself.</p>
+      <p class="hero-kicker">catch it</p>
+      <h1 class="section-title">CUNA CUMMIN' FOR YA</h1>
+      <p class="section-sub">Tacos rain. The chasers rain with them. You have one pair of lips and three lives — CUNA cummin' for ya 💦</p>
     </div>
 
-    <section id="cuna-game" class="cg" role="application"
-             aria-label="TONGUE TWISTER, a snake game" aria-describedby="cg-help" tabindex="0">
-      <p id="cg-help" class="cg-sr">TONGUE TWISTER is a snake game. You steer a tongue around a board eating tacos, and it gets longer every time. Running into a wall or into your own body ends the run. Once you are long enough a chaser called JEET turns up; a big taco makes him edible for a few seconds. On a phone, tap the cross or drag the stick in either gutter, or swipe the board. On a keyboard, use the arrow keys or W A S D. P pauses, M toggles sound, and Space starts or restarts. It is a toy and it awards nothing but calories, which are not real.</p>
+    <section id="cuna-game" class="cg cg-catch" role="application"
+             aria-label="CUNA CUMMIN' FOR YA, a catching game" aria-describedby="cg-help" tabindex="0">
+      <p id="cg-help" class="cg-sr">CUNA CUMMIN' FOR YA is a catching game. A pair of lips sits at the bottom of the board and things fall from the top. Catch the tacos to score; the big taco is worth more. Catching one of the four chasers costs a life, and three lost lives end the run. Everything falls faster and the chasers get commoner the longer you last. On a phone, tap or hold the cross or the stick in either gutter, or swipe the board; left and right slide the lips, up and down plant them. On a keyboard, hold the left and right arrows or A and D. P pauses, M toggles sound, and Space starts or restarts. It is a toy and it awards nothing but calories, which are not real.</p>
       <span class="cg-probe" id="cg-probe" aria-hidden="true"></span>
 
       <div class="cg-hud" id="cg-hud">
         <div class="cg-stat"><span>Calories</span><strong id="cg-score">0</strong></div>
         <div class="cg-stat"><span>Best</span><strong id="cg-best">0</strong></div>
-        <div class="cg-stat"><span>Length</span><strong id="cg-len">4</strong></div>
+        <div class="cg-stat cg-stat-streak"><span>Streak</span><strong id="cg-streak">0</strong></div>
+        <div class="cg-lives" id="cg-lives" aria-label="Lives left"></div>
         <button class="cg-icon is-muted" id="cg-sound" type="button" aria-pressed="false" aria-label="Sound off">&#9834;</button>
         <button class="cg-icon" id="cg-pause" type="button" aria-label="Pause">&#10074;&#10074;</button>
       </div>
@@ -94,7 +96,8 @@
           <div class="cg-pcard">
             <div class="cg-prow cg-prow-big"><span>Calories</span><strong id="cg-p-score">0</strong></div>
             <div class="cg-prow"><span>Best</span><strong id="cg-p-best">0</strong></div>
-            <div class="cg-prow"><span>Length</span><strong id="cg-p-len">4</strong></div>
+            <div class="cg-prow"><span>Streak</span><strong id="cg-p-streak">0</strong></div>
+            <div class="cg-prow"><span>Lives</span><span class="cg-lives" id="cg-p-lives"></span></div>
           </div>
         </div>
         <div class="cg-pad" data-side="l" aria-hidden="true">
@@ -117,14 +120,15 @@
         <div class="cg-panel">
           <h3>HOW IT GOES</h3>
           <div class="cg-pcard">
-            <div class="cg-prow"><span>Taco</span><strong>+25</strong></div>
-            <div class="cg-prow"><span>Big taco</span><strong>+120</strong></div>
-            <div class="cg-prow"><span>Eat JEET</span><strong>+200</strong></div>
+            <div class="cg-prow"><span>Taco</span><strong>+50</strong></div>
+            <div class="cg-prow"><span>Big taco</span><strong>+150</strong></div>
+            <div class="cg-prow"><span>Streak bonus</span><strong>up to +100</strong></div>
+            <div class="cg-prow"><span>Caught a chaser</span><strong>&#8722;1 life</strong></div>
           </div>
           <div class="cg-pcard">
             <div class="cg-keys">
-              <kbd class="cg-key">&#8593;</kbd><kbd class="cg-key">&#8595;</kbd><kbd class="cg-key">&#8592;</kbd><kbd class="cg-key">&#8594;</kbd>
-              <kbd class="cg-key">W</kbd><kbd class="cg-key">A</kbd><kbd class="cg-key">S</kbd><kbd class="cg-key">D</kbd>
+              <kbd class="cg-key">&#8592;</kbd><kbd class="cg-key">&#8594;</kbd>
+              <kbd class="cg-key">A</kbd><kbd class="cg-key">D</kbd>
               <kbd class="cg-key">P</kbd><kbd class="cg-key">M</kbd><kbd class="cg-key">SPACE</kbd>
             </div>
           </div>
@@ -150,15 +154,15 @@
       <p class="cg-sr" id="cg-live" role="status" aria-live="polite"></p>
     </section>
 
-    <p class="cg-underline" id="cg-hint">Arrows or WASD. P pauses. M is the sound. Space starts.</p>
+    <p class="cg-underline" id="cg-hint">Hold left or right. P pauses. M is the sound. Space starts.</p>
 
 
     <nav class="cg-more" aria-label="More games">
       <h2>More to eat</h2>
       <div class="cg-moregrid">
         <a class="cg-morecard" href="game.html"><b>TONGUE RUSH</b><span>the chart is the maze</span></a>
+        <a class="cg-morecard" href="twister.html"><b>TONGUE TWISTER</b><span>it only gets longer</span></a>
         <a class="cg-morecard" href="whack.html"><b>JEET WHACK</b><span>tacos yes, jeets no</span></a>
-        <a class="cg-morecard" href="catcher.html"><b>CUNA CUMMIN' FOR YA</b><span>catch it</span></a>
         <a class="cg-morecard" href="tray.html"><b>TACO TRAY</b><span>line them up</span></a>
       </div>
       <p class="cg-moreall"><a href="games.html">All five in one place &rarr;</a></p>
@@ -177,6 +181,6 @@
 </footer>
 
 <script src="assets/controls.js"></script>
-<script src="assets/twister.js"></script>
+<script src="assets/catcher.js"></script>
 </body>
 </html>

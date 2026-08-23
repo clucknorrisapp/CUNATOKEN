@@ -434,6 +434,8 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   font-size: 1rem; letter-spacing: .03em; color: var(--cream);
 }
 .cg-morecard span { display: block; font-size: .78rem; font-weight: 700; color: var(--pink-3); }
+.cg-moreall { margin: .7rem 0 0; font-size: .85rem; font-weight: 800; }
+.cg-moreall a { color: var(--pink-2); }
 
 /* ─────────── control chooser ─────────── */
 
@@ -634,7 +636,12 @@ body.cuna-playing #cuna-game {
 body.cuna-playing { overflow: hidden; }
 body.cuna-playing .nav, body.cuna-playing .footer,
 body.cuna-playing .section-head, body.cuna-playing .cg-underline,
-body.cuna-playing .cg-legend-m, body.cuna-playing .cg-fineprint { display: none; }
+body.cuna-playing .cg-legend-m, body.cuna-playing .cg-fineprint,
+/* .cg-more was added to the page furniture after this rule was written and
+   not added here, so during immersive play the "more games" cards showed
+   straight through the board — the shell background is only 62% opaque.
+   Anything added to a game page from now on belongs in this list. */
+body.cuna-playing .cg-more { display: none; }
 
 /* ─────────── reduced motion ─────────── */
 

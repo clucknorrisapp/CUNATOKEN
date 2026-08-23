@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TONGUE TWISTER — $CUNA</title>
-<meta name="description" content="TONGUE TWISTER: a snake game where you are the $CUNA tongue and every taco makes you longer. Plays in the browser, on a phone or a keyboard.">
+<title>TACO TRAY — $CUNA</title>
+<meta name="description" content="TACO TRAY: a match-three on a seven by seven tray. Twenty moves, swap two neighbours, line up three and let the whole thing fall in on itself. Plays in the browser on a phone or a desktop.">
 <meta name="theme-color" content="#3D0A26">
 <link rel="icon" href="assets/logo.jpg">
 <link rel="apple-touch-icon" href="assets/logo.jpg">
 
-<link rel="canonical" href="https://cunatoken.com/twister.html">
+<link rel="canonical" href="https://cunatoken.com/tray.html">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://cunatoken.com/twister.html">
+<meta property="og:url" content="https://cunatoken.com/tray.html">
 <meta property="og:site_name" content="CUNALINGUS">
-<meta property="og:title" content="TONGUE TWISTER">
-<meta property="og:description" content="Eat tacos. Get longer. The only thing that can kill you is yourself.">
+<meta property="og:title" content="TACO TRAY">
+<meta property="og:description" content="Twenty moves. Swap two neighbours, line up three, watch the tray collapse.">
 <meta property="og:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="TONGUE TWISTER">
-<meta name="twitter:description" content="Eat tacos. Get longer. The only thing that can kill you is yourself.">
+<meta name="twitter:title" content="TACO TRAY">
+<meta name="twitter:description" content="Twenty moves. Swap two neighbours, line up three, watch the tray collapse.">
 <meta name="twitter:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,6 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/game.css">
+<link rel="stylesheet" href="assets/tray.css">
 
 </head>
 <body>
@@ -64,22 +65,22 @@
   <section class="section">
 
     <div class="section-head">
-      <p class="hero-kicker">it only gets longer</p>
-      <h1 class="section-title">TONGUE TWISTER</h1>
-      <p class="section-sub">Eat tacos. Get longer. The only thing that can really kill you is yourself.</p>
+      <p class="hero-kicker">three in a row, please</p>
+      <h1 class="section-title">TACO TRAY</h1>
+      <p class="section-sub">Twenty moves. Swap two neighbours, line up three, and let the whole tray fall in on itself.</p>
     </div>
 
-    <section id="cuna-game" class="cg" role="application"
-             aria-label="TONGUE TWISTER, a snake game" aria-describedby="cg-help" tabindex="0">
-      <p id="cg-help" class="cg-sr">TONGUE TWISTER is a snake game. You steer a tongue around a board eating tacos, and it gets longer every time. Running into a wall or into your own body ends the run. Once you are long enough a chaser called JEET turns up; a big taco makes him edible for a few seconds. On a phone, tap the cross or drag the stick in either gutter, or swipe the board. On a keyboard, use the arrow keys or W A S D. P pauses, M toggles sound, and Space starts or restarts. It is a toy and it awards nothing but calories, which are not real.</p>
+    <section id="cuna-game" class="cg cg-tray" role="application"
+             aria-label="TACO TRAY, a match-three game" aria-describedby="cg-help" tabindex="0">
+      <p id="cg-help" class="cg-sr">TACO TRAY is a match-three puzzle on a seven by seven tray. Swap any two neighbouring tiles to line up three or more of the same kind; they clear, the tiles above drop into the gap, and anything that lines up on the way down clears too, for more calories each time. A swap that lines nothing up slides straight back and costs you nothing. You get twenty moves, and a line of five hands one of them back. Tap a tile then tap its neighbour, or drag a tile toward the one you want to trade it with. On a keyboard the arrow keys move the picker and Space or Enter picks up and puts down. Space also starts, M toggles sound. It is a toy and it awards nothing but calories, which are not real.</p>
       <span class="cg-probe" id="cg-probe" aria-hidden="true"></span>
 
       <div class="cg-hud" id="cg-hud">
         <div class="cg-stat"><span>Calories</span><strong id="cg-score">0</strong></div>
         <div class="cg-stat"><span>Best</span><strong id="cg-best">0</strong></div>
-        <div class="cg-stat"><span>Length</span><strong id="cg-len">4</strong></div>
+        <div class="cg-stat"><span>Chain</span><strong id="cg-chain">0</strong></div>
+        <div class="cg-stat cg-stat-clock"><span>Moves</span><strong id="cg-moves">20</strong></div>
         <button class="cg-icon is-muted" id="cg-sound" type="button" aria-pressed="false" aria-label="Sound off">&#9834;</button>
-        <button class="cg-icon" id="cg-pause" type="button" aria-label="Pause">&#10074;&#10074;</button>
       </div>
 
       <div class="cg-field" id="cg-field">
@@ -94,21 +95,8 @@
           <div class="cg-pcard">
             <div class="cg-prow cg-prow-big"><span>Calories</span><strong id="cg-p-score">0</strong></div>
             <div class="cg-prow"><span>Best</span><strong id="cg-p-best">0</strong></div>
-            <div class="cg-prow"><span>Length</span><strong id="cg-p-len">4</strong></div>
-          </div>
-        </div>
-        <div class="cg-pad" data-side="l" aria-hidden="true">
-          <div class="cg-padbtn cg-pu" data-dir="0"></div>
-          <div class="cg-padbtn cg-pl" data-dir="1"></div>
-          <div class="cg-padbtn cg-pd" data-dir="2"></div>
-          <div class="cg-padbtn cg-pr" data-dir="3"></div>
-          <div class="cg-padhub"></div>
-        </div>
-        <div class="cg-stick" data-side="l" aria-hidden="true">
-          <div class="cg-ring">
-            <i class="cg-chev cg-u"></i><i class="cg-chev cg-r"></i>
-            <i class="cg-chev cg-d"></i><i class="cg-chev cg-l"></i>
-            <div class="cg-nub"></div>
+            <div class="cg-prow"><span>Moves left</span><strong id="cg-p-moves">20</strong></div>
+            <div class="cg-prow"><span>Longest chain</span><strong id="cg-p-chain">0</strong></div>
           </div>
         </div>
       </div>
@@ -117,49 +105,30 @@
         <div class="cg-panel">
           <h3>HOW IT GOES</h3>
           <div class="cg-pcard">
-            <div class="cg-prow"><span>Taco</span><strong>+25</strong></div>
-            <div class="cg-prow"><span>Big taco</span><strong>+120</strong></div>
-            <div class="cg-prow"><span>Eat JEET</span><strong>+200</strong></div>
-          </div>
-          <div class="cg-pcard">
-            <div class="cg-keys">
-              <kbd class="cg-key">&#8593;</kbd><kbd class="cg-key">&#8595;</kbd><kbd class="cg-key">&#8592;</kbd><kbd class="cg-key">&#8594;</kbd>
-              <kbd class="cg-key">W</kbd><kbd class="cg-key">A</kbd><kbd class="cg-key">S</kbd><kbd class="cg-key">D</kbd>
-              <kbd class="cg-key">P</kbd><kbd class="cg-key">M</kbd><kbd class="cg-key">SPACE</kbd>
-            </div>
+            <div class="cg-prow"><span>Three in a row</span><strong>+90</strong></div>
+            <div class="cg-prow"><span>Each extra tile</span><strong>+75</strong></div>
+            <div class="cg-prow"><span>Cascade chain</span><strong>&#215;1.5, &#215;2&#8230;</strong></div>
+            <div class="cg-prow"><span>Line of five</span><strong>+1 move</strong></div>
+            <div class="cg-prow"><span>Swap with no line</span><strong>free</strong></div>
           </div>
           <img class="cg-badge" src="assets/logo.jpg" alt="" width="58" height="58">
           <p style="text-align:center;margin:0"><a class="btn btn-buy btn-sm" href="buy.html">Buy $CUNA</a></p>
-        </div>
-        <div class="cg-pad" data-side="r" aria-hidden="true">
-          <div class="cg-padbtn cg-pu" data-dir="0"></div>
-          <div class="cg-padbtn cg-pl" data-dir="1"></div>
-          <div class="cg-padbtn cg-pd" data-dir="2"></div>
-          <div class="cg-padbtn cg-pr" data-dir="3"></div>
-          <div class="cg-padhub"></div>
-        </div>
-        <div class="cg-stick" data-side="r" aria-hidden="true">
-          <div class="cg-ring">
-            <i class="cg-chev cg-u"></i><i class="cg-chev cg-r"></i>
-            <i class="cg-chev cg-d"></i><i class="cg-chev cg-l"></i>
-            <div class="cg-nub"></div>
-          </div>
         </div>
       </div>
 
       <p class="cg-sr" id="cg-live" role="status" aria-live="polite"></p>
     </section>
 
-    <p class="cg-underline" id="cg-hint">Arrows or WASD. P pauses. M is the sound. Space starts.</p>
+    <p class="cg-underline" id="cg-hint">Tap a tile, then tap its neighbour &#8212; or just drag one into the other. Space starts. M is the sound.</p>
 
 
     <nav class="cg-more" aria-label="More games">
       <h2>More to eat</h2>
       <div class="cg-moregrid">
         <a class="cg-morecard" href="game.html"><b>TONGUE RUSH</b><span>the chart is the maze</span></a>
+        <a class="cg-morecard" href="twister.html"><b>TONGUE TWISTER</b><span>it only gets longer</span></a>
         <a class="cg-morecard" href="whack.html"><b>JEET WHACK</b><span>tacos yes, jeets no</span></a>
         <a class="cg-morecard" href="catcher.html"><b>CUNA CUMMIN' FOR YA</b><span>catch it</span></a>
-        <a class="cg-morecard" href="tray.html"><b>TACO TRAY</b><span>line them up</span></a>
       </div>
       <p class="cg-moreall"><a href="games.html">All five in one place &rarr;</a></p>
     </nav>
@@ -176,7 +145,6 @@
   <p class="footer-fine"><a href="index.html">← Back to the main page</a></p>
 </footer>
 
-<script src="assets/controls.js"></script>
-<script src="assets/twister.js"></script>
+<script src="assets/tray.js"></script>
 </body>
 </html>
