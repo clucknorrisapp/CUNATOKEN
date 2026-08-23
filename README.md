@@ -402,11 +402,25 @@ Three things about that pipeline are worth keeping:
   0.78 of a tile, because the tighter crop had adjacent tacos almost touching
   and the corridors stopped reading as corridors.
 
-Two failures worth remembering: a dark violet subject on a dark plum UI is
-invisible no matter how good the render (RUGGY had to be regenerated with
+**The chomp pair is generated and normalised together**, not as two icons.
+Two things go wrong otherwise:
+
+- The first `closed` frame was lips with the mouth shut and no tongue at all.
+  The player alternates the two frames, so half of every chomp in a game
+  called TONGUE RUSH had no tongue in it — and the same pair drives the snake
+  head in TONGUE TWISTER and the paddle in CUNA CUMMIN' FOR YA. Both frames
+  now show the tongue; only the mouth changes.
+- Keying each frame to fill its own cell is right for nine unrelated icons and
+  wrong for two frames of one animation. The open frame's tongue hangs lower,
+  so fitting it to the cell shrank its lips and the mouth popped between
+  frames. The pair now shares one scale, taken from the wider frame, aligned
+  on the top edge: measured, the lips sit within 10px of each other and match
+  in width to within 8px, so the mouth holds and only the tongue swings.
+
+One more failure worth remembering: a dark violet subject on a dark plum UI is
+invisible no matter how good the render. RUGGY had to be regenerated with
 "brightly lit, NOT dark" and now measures +58 luminance over the background,
-against JEET's +51), and a chomp pair has to be generated at the same framing
-or the two frames pop between sizes.
+against JEET's +51.
 
 **Neon pass.** Every board carries the same treatment so the five games read
 as one arcade: glowing wall edges in TONGUE RUSH (plus a sparkle layer on the
