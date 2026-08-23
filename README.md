@@ -380,8 +380,18 @@ goes in that rule.
 **The art — two atlases, on purpose.**
 
 - `assets/sprites-neo.webp` — nine 256px cells, generated with Higgsfield
-  (Recraft V4.1 at 2k) and cut out locally. Used by TONGUE TWISTER, JEET
-  WHACK, CUNA CUMMIN' FOR YA and TACO TRAY, all of which draw sprites large.
+  (`nano_banana_2` at 2k) **with `assets/logo.jpg` attached as an image
+  reference on every prompt**, then cut out locally. Used by TONGUE TWISTER,
+  JEET WHACK, CUNA CUMMIN' FOR YA and TACO TRAY, all of which draw sprites
+  large. The style is the logo's: bold vinyl-sticker cartoon, thick dark
+  outline, white sticker edge, glossy cel shading, kawaii faces.
+
+  An earlier version of this set was chrome-and-neon 3D and looked expensive
+  but nothing like the brand. Text-only prompting could not close that gap;
+  switching to a model that accepts a reference image and passing the logo did
+  it in one pass. The white sticker edge is not decoration either — it is what
+  keeps a cream ghost and a pink taco legible against the plum background at
+  a 26px tile.
 - `assets/sprites.webp` — the original 144px hand-drawn set. **TONGUE RUSH
   keeps this**, and that is a deliberate reversal, not a leftover.
 
@@ -405,6 +415,12 @@ existing pulse. It is drawn for reduced-motion users too, without the pulse,
 because it answers a legibility question rather than a decorative one.
 
 Three things about that pipeline are worth keeping:
+
+Three things the reference could not fix on its own, all caught by looking at
+the output: the taco prompt returned the logo's lips-and-taco pair rather than
+the taco alone, FUDD came back on a white background where every other cell
+was black, and PAPER arrived with the word "GASP" written across it despite
+the prompt forbidding text. All three needed a second pass.
 
 - **The chasers differ by silhouette, not just hue.** The previous set had
   JEET and RUGGY as the same ghost shape in two neighbouring warm hues, and at
