@@ -3,5 +3,7 @@
   <url><loc>https://cunatoken.com/</loc><priority>1.0</priority></url>
   <url><loc>https://cunatoken.com/buy.html</loc><priority>0.8</priority></url>
   <url><loc>https://cunatoken.com/game.html</loc><priority>0.6</priority></url>
+  <url><loc>https://cunatoken.com/twister.html</loc><priority>0.6</priority></url>
+  <url><loc>https://cunatoken.com/whack.html</loc><priority>0.6</priority></url>
   <url><loc>https://cunatoken.com/safety.html</loc><priority>0.5</priority></url>
 </urlset>

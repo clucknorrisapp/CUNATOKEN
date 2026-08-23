@@ -362,6 +362,48 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
   border-radius: 50%; border: 3px solid var(--ink); box-shadow: var(--pop);
 }
 
+/* ─────────── JEET WHACK ─────────── */
+
+/* A tap game has no stick and no cross, so on touch the gutters are simply
+   empty margins. Collapse them and give the board the whole width — nine
+   targets want every pixel a phone has, and an empty gutter is worse than no
+   gutter because it looks like something is missing. */
+#cuna-game.cg-whack.cg-touch {
+  grid-template-columns: 1fr;
+  /* The field row is `auto`, not `1fr`: the canvas is given an explicit pixel
+     size by the script, so letting the row stretch only manufactured empty
+     space above and below the board. */
+  grid-template-rows: auto auto;
+  grid-template-areas: "hud" "field";
+  min-height: 0;
+}
+#cuna-game.cg-whack .cg-field { padding: 6px 0 10px; }
+#cuna-game.cg-whack.cg-touch .cg-gutter { display: none; }
+.cg-stat-clock strong { color: var(--pink-2); }
+
+/* ─────────── more games strip ─────────── */
+
+.cg-more { max-width: 62ch; margin: 1.4rem auto 0; text-align: center; }
+.cg-more h2 {
+  font-family: 'Luckiest Guy', system-ui, sans-serif;
+  font-size: 1.05rem; letter-spacing: .04em; color: var(--pink-3);
+  margin: 0 0 .6rem;
+}
+.cg-moregrid { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+@media (max-width: 420px) { .cg-moregrid { grid-template-columns: 1fr; } }
+.cg-morecard {
+  display: block; padding: .7rem .8rem; text-decoration: none;
+  background: rgba(36, 4, 15, .62);
+  border: var(--edge); border-radius: 14px; box-shadow: var(--pop);
+  transition: transform .12s ease;
+}
+.cg-morecard:hover, .cg-morecard:focus-visible { transform: translateY(-2px); }
+.cg-morecard b {
+  display: block; font-family: 'Luckiest Guy', system-ui, sans-serif;
+  font-size: 1rem; letter-spacing: .03em; color: var(--cream);
+}
+.cg-morecard span { display: block; font-size: .78rem; font-weight: 700; color: var(--pink-3); }
+
 /* ─────────── control chooser ─────────── */
 
 /* Pinned to the bottom of the overlay, not placed in the card. In the card

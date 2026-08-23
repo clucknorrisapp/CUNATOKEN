@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JEET WHACK — $CUNA</title>
+<meta name="description" content="JEET WHACK: forty-five seconds, nine holes, and a simple rule. Tap the tacos, leave the jeets alone. Plays in the browser on a phone or a desktop.">
+<meta name="theme-color" content="#3D0A26">
+<link rel="icon" href="assets/logo.jpg">
+<link rel="apple-touch-icon" href="assets/logo.jpg">
+
+<link rel="canonical" href="https://cunatoken.com/whack.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://cunatoken.com/whack.html">
+<meta property="og:site_name" content="CUNALINGUS">
+<meta property="og:title" content="JEET WHACK">
+<meta property="og:description" content="Forty-five seconds. Tap the tacos, leave the jeets alone.">
+<meta property="og:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="JEET WHACK">
+<meta name="twitter:description" content="Forty-five seconds. Tap the tacos, leave the jeets alone.">
+<meta name="twitter:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/game.css">
+
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="bg" aria-hidden="true"
+     style="background:radial-gradient(120% 90% at 50% -10%, var(--plum-3), var(--plum) 45%, var(--ink));"></div>
+
+<header class="nav">
+  <a class="nav-brand" href="index.html">
+    <img src="assets/logo.jpg" alt="" width="44" height="44">
+    <span>CUNA</span>
+  </a>
+  <div class="nav-social" data-nav-social>
+    <a class="social-btn" data-social="telegram" href="https://t.me/cunaonsol"
+       target="_blank" rel="noopener" aria-label="$CUNA on Telegram">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+    </a>
+    <a class="social-btn" data-social="x" href="https://x.com/cunatoken"
+       target="_blank" rel="noopener" aria-label="$CUNA on X">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+    </a>
+  </div>
+  <nav class="nav-links" aria-label="Sections">
+    <a href="index.html#burn">Burn</a>
+    <a href="index.html#bag">Your bag</a>
+    <a href="index.html#stats">Stats</a>
+    <a href="game.html" aria-current="page">Games</a>
+    <a href="index.html#community">Community</a>
+  </nav>
+  <a class="btn btn-buy btn-sm" href="buy.html">Buy <span class="nav-buy-ticker">$CUNA</span></a>
+</header>
+
+<main id="main">
+  <section class="section">
+
+    <div class="section-head">
+      <p class="hero-kicker">tacos yes, jeets no</p>
+      <h1 class="section-title">JEET WHACK</h1>
+      <p class="section-sub">Forty-five seconds. Nine holes. One rule, which you will break in the last ten seconds.</p>
+    </div>
+
+    <section id="cuna-game" class="cg cg-whack" role="application"
+             aria-label="JEET WHACK, a tap game" aria-describedby="cg-help" tabindex="0">
+      <p id="cg-help" class="cg-sr">JEET WHACK is a tap game. Tacos and chasers pop out of nine holes for forty-five seconds. Tap the tacos to score; tapping a chaser costs you points and breaks your streak. Everything speeds up as the clock runs down and chasers get commoner. Press Space or Enter to start, and M toggles sound. It is a toy and it awards nothing but calories, which are not real.</p>
+      <span class="cg-probe" id="cg-probe" aria-hidden="true"></span>
+
+      <div class="cg-hud" id="cg-hud">
+        <div class="cg-stat"><span>Calories</span><strong id="cg-score">0</strong></div>
+        <div class="cg-stat"><span>Best</span><strong id="cg-best">0</strong></div>
+        <div class="cg-stat"><span>Streak</span><strong id="cg-streak">0</strong></div>
+        <div class="cg-stat cg-stat-clock"><span>Seconds</span><strong id="cg-clock">45</strong></div>
+        <button class="cg-icon is-muted" id="cg-sound" type="button" aria-pressed="false" aria-label="Sound off">&#9834;</button>
+      </div>
+
+      <div class="cg-field" id="cg-field">
+        <canvas id="cg-canvas" aria-hidden="true"></canvas>
+        <p class="cg-toast" id="cg-toast" aria-hidden="true"></p>
+        <div class="cg-overlay" id="cg-overlay" hidden></div>
+      </div>
+
+      <div class="cg-gutter cg-gutter-l" id="cg-gutL">
+        <div class="cg-panel">
+          <h3>THE PLATE</h3>
+          <div class="cg-pcard">
+            <div class="cg-prow cg-prow-big"><span>Calories</span><strong id="cg-p-score">0</strong></div>
+            <div class="cg-prow"><span>Best</span><strong id="cg-p-best">0</strong></div>
+            <div class="cg-prow"><span>Streak</span><strong id="cg-p-streak">0</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cg-gutter cg-gutter-r" id="cg-gutR">
+        <div class="cg-panel">
+          <h3>HOW IT GOES</h3>
+          <div class="cg-pcard">
+            <div class="cg-prow"><span>Taco</span><strong>+50</strong></div>
+            <div class="cg-prow"><span>Big taco</span><strong>+150</strong></div>
+            <div class="cg-prow"><span>Streak bonus</span><strong>up to +100</strong></div>
+            <div class="cg-prow"><span>Tapped a jeet</span><strong>&#8722;75</strong></div>
+          </div>
+          <img class="cg-badge" src="assets/logo.jpg" alt="" width="58" height="58">
+          <p style="text-align:center;margin:0"><a class="btn btn-buy btn-sm" href="buy.html">Buy $CUNA</a></p>
+        </div>
+      </div>
+
+      <p class="cg-sr" id="cg-live" role="status" aria-live="polite"></p>
+    </section>
+
+    <p class="cg-underline" id="cg-hint">Tap or click the tacos. Space starts. M is the sound.</p>
+
+
+    <nav class="cg-more" aria-label="More games">
+      <h2>More to eat</h2>
+      <div class="cg-moregrid">
+        <a class="cg-morecard" href="game.html"><b>TONGUE RUSH</b><span>the chart is the maze</span></a>
+        <a class="cg-morecard" href="twister.html"><b>TONGUE TWISTER</b><span>it only gets longer</span></a>
+      </div>
+    </nav>
+
+    <p class="card cg-fineprint">It's a toy. It keeps score in calories, which are not withdrawable, transferable, tradeable or real. Playing it earns you nothing, and neither does reading this sentence. Nothing here is advice.</p>
+
+  </section>
+</main>
+
+<footer class="footer">
+  <img src="assets/logo.jpg" alt="" width="64" height="64" class="footer-mark">
+  <p class="footer-line">Not financial advice. Just degenerate advice.</p>
+  <p class="footer-fine">$CUNA is a meme coin with no utility, no roadmap and no promises. Buy it because it made you laugh, not because you expect anything from it. Live figures come from public APIs and can be wrong, stale, or briefly hilarious.</p>
+  <p class="footer-fine"><a href="index.html">← Back to the main page</a></p>
+</footer>
+
+<script src="assets/whack.js"></script>
+</body>
+</html>

@@ -297,6 +297,36 @@ The path art below is therefore still live code, not legacy:
   on the board, so it can afford detail the pellets cannot. `assets/game.js` is one IIFE and uses modern syntax, unlike
 `assets/app.js` which is deliberately ES5-style.
 
+### The games
+
+Three of them, sharing one sprite atlas, one stylesheet and one input layer:
+
+| Page | Game | What it is |
+|---|---|---|
+| `game.html` | TONGUE RUSH | Pac-Man. The maze, four chasers, courses. |
+| `twister.html` | TONGUE TWISTER | Snake. The tongue grows; a chaser turns up at length 8. |
+| `whack.html` | JEET WHACK | Whack-a-mole. 45 seconds, tap tacos, don't tap chasers. |
+
+`assets/controls.js` is the shared input layer and is the reason a second and
+third game were cheap. It was **extracted rather than copied**: same-axis
+reversal, re-anchoring a gesture at each committed turn and a resting hand not
+stealing the stick all took real debugging, and three private copies would
+have drifted apart the first time one of them was fixed. `game.js` was
+migrated onto it rather than left on its own copy.
+
+Both grid games size their board **from the viewport and the shell**, never
+from the field. The field is a grid track that sizes to its content, so
+measuring it and then setting the canvas inside it is a feedback loop — every
+pass reads a slightly smaller box and writes a slightly smaller board. It
+converges on the minimum tile size, and both boards were 120px squares on half
+the devices tested before this was caught. Width is bounded by the *shell*
+(whose width comes from the page, not the canvas); height by the viewport.
+
+JEET WHACK draws its targets at ~190px. The maze pellet sprite is drawn at
+~16px in TONGUE RUSH and has no face, so blown up it is a featureless cream
+dome; the tap game uses the detailed taco for both target kinds and separates
+them by size and a glow instead.
+
 **Controls.** Desktop: arrows or WASD, P to pause, M to mute, Space/Enter to
 start. Touch: a **d-pad cross in one gutter and a joystick in the other**,
 both live at the same time, plus swipe on the playfield. Nobody has to choose

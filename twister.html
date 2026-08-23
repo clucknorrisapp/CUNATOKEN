@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TONGUE RUSH — the $CUNA chart-eating game</title>
-<meta name="description" content="TONGUE RUSH: a little maze game where you are the $CUNA tongue and the chart is dinner. Plays in the browser, on a phone or a keyboard, and pays out in calories.">
+<title>TONGUE TWISTER — $CUNA</title>
+<meta name="description" content="TONGUE TWISTER: a snake game where you are the $CUNA tongue and every taco makes you longer. Plays in the browser, on a phone or a keyboard.">
 <meta name="theme-color" content="#3D0A26">
 <link rel="icon" href="assets/logo.jpg">
 <link rel="apple-touch-icon" href="assets/logo.jpg">
 
-<link rel="canonical" href="https://cunatoken.com/game.html">
+<link rel="canonical" href="https://cunatoken.com/twister.html">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://cunatoken.com/game.html">
+<meta property="og:url" content="https://cunatoken.com/twister.html">
 <meta property="og:site_name" content="CUNALINGUS">
-<meta property="og:title" content="TONGUE RUSH">
-<meta property="og:description" content="The chart is the maze. You're the tongue. Eat every taco.">
+<meta property="og:title" content="TONGUE TWISTER">
+<meta property="og:description" content="Eat tacos. Get longer. The only thing that can kill you is yourself.">
 <meta property="og:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="TONGUE RUSH">
-<meta name="twitter:description" content="The chart is the maze. You're the tongue. Eat every taco.">
+<meta name="twitter:title" content="TONGUE TWISTER">
+<meta name="twitter:description" content="Eat tacos. Get longer. The only thing that can kill you is yourself.">
 <meta name="twitter:image" content="https://arweave.net/pFKl2kLMwya7ULAUtgBTYExz-3yHM4c3gc5eGmvWkVY">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,23 +64,22 @@
   <section class="section">
 
     <div class="section-head">
-      <p class="hero-kicker">gonna eat that chart</p>
-      <h1 class="section-title">TONGUE RUSH</h1>
-      <p class="section-sub">The chart is the maze. You're the tongue. Eat every taco on it before the exit liquidity catches you.</p>
+      <p class="hero-kicker">it only gets longer</p>
+      <h1 class="section-title">TONGUE TWISTER</h1>
+      <p class="section-sub">Eat tacos. Get longer. The only thing that can really kill you is yourself.</p>
     </div>
 
     <section id="cuna-game" class="cg" role="application"
-             aria-label="TONGUE RUSH, a maze game" aria-describedby="cg-help" tabindex="0">
-      <p id="cg-help" class="cg-sr">TONGUE RUSH is a maze game. You steer a pair of lips with its tongue out around a maze built out of candlesticks, eating every taco while four chasers hunt you. On a phone, drag the on-screen stick; press the empty gutter on the other side and the stick moves there. On a keyboard, use the arrow keys or W A S D. P pauses, M toggles sound, and Space starts or restarts. It is a toy and it awards nothing but calories, which are not real.</p>
+             aria-label="TONGUE TWISTER, a snake game" aria-describedby="cg-help" tabindex="0">
+      <p id="cg-help" class="cg-sr">TONGUE TWISTER is a snake game. You steer a tongue around a board eating tacos, and it gets longer every time. Running into a wall or into your own body ends the run. Once you are long enough a chaser called JEET turns up; a big taco makes him edible for a few seconds. On a phone, tap the cross or drag the stick in either gutter, or swipe the board. On a keyboard, use the arrow keys or W A S D. P pauses, M toggles sound, and Space starts or restarts. It is a toy and it awards nothing but calories, which are not real.</p>
       <span class="cg-probe" id="cg-probe" aria-hidden="true"></span>
 
       <div class="cg-hud" id="cg-hud">
         <div class="cg-stat"><span>Calories</span><strong id="cg-score">0</strong></div>
         <div class="cg-stat"><span>Best</span><strong id="cg-best">0</strong></div>
-        <div class="cg-stat"><span>Course</span><strong id="cg-course">1</strong></div>
-        <div class="cg-lives" id="cg-lives" aria-label="Tacos left"></div>
-        <button class="cg-icon is-muted" id="cg-sound" type="button" aria-pressed="false" aria-label="Sound off">♪</button>
-        <button class="cg-icon" id="cg-pause" type="button" aria-label="Pause">❚❚</button>
+        <div class="cg-stat"><span>Length</span><strong id="cg-len">4</strong></div>
+        <button class="cg-icon is-muted" id="cg-sound" type="button" aria-pressed="false" aria-label="Sound off">&#9834;</button>
+        <button class="cg-icon" id="cg-pause" type="button" aria-label="Pause">&#10074;&#10074;</button>
       </div>
 
       <div class="cg-field" id="cg-field">
@@ -95,9 +94,7 @@
           <div class="cg-pcard">
             <div class="cg-prow cg-prow-big"><span>Calories</span><strong id="cg-p-score">0</strong></div>
             <div class="cg-prow"><span>Best</span><strong id="cg-p-best">0</strong></div>
-            <div class="cg-prow"><span>Course</span><strong id="cg-p-course">1</strong></div>
-            <div class="cg-prow"><span>Tacos</span><span class="cg-lives" id="cg-p-lives"></span></div>
-            <div class="cg-prow"><span>Tacos left</span><strong id="cg-p-bids">212</strong></div>
+            <div class="cg-prow"><span>Length</span><strong id="cg-p-len">4</strong></div>
           </div>
         </div>
         <div class="cg-pad" data-side="l" aria-hidden="true">
@@ -118,18 +115,15 @@
 
       <div class="cg-gutter cg-gutter-r" id="cg-gutR">
         <div class="cg-panel">
-          <h3>THE EXIT LIQUIDITY</h3>
+          <h3>HOW IT GOES</h3>
           <div class="cg-pcard">
-            <ul class="cg-legend">
-              <li><canvas data-ch="0" aria-hidden="true"></canvas><div><b>JEET</b><p>Comes straight at you and never stops. The emptier the book gets, the faster he sells.</p></div></li>
-              <li><canvas data-ch="1" aria-hidden="true"></canvas><div><b>RUGGY</b><p>Aims four tiles ahead of you. He isn't chasing you, he's already there.</p></div></li>
-              <li><canvas data-ch="2" aria-hidden="true"></canvas><div><b>FUDD</b><p>Works out where you'll be, then doubles it. Nobody knows where he's going, including him.</p></div></li>
-              <li><canvas data-ch="3" aria-hidden="true"></canvas><div><b>PAPER</b><p>Chases you until you're close, then bottles it and runs home. Folds every single time.</p></div></li>
-            </ul>
+            <div class="cg-prow"><span>Taco</span><strong>+25</strong></div>
+            <div class="cg-prow"><span>Big taco</span><strong>+120</strong></div>
+            <div class="cg-prow"><span>Eat JEET</span><strong>+200</strong></div>
           </div>
           <div class="cg-pcard">
             <div class="cg-keys">
-              <kbd class="cg-key">↑</kbd><kbd class="cg-key">↓</kbd><kbd class="cg-key">←</kbd><kbd class="cg-key">→</kbd>
+              <kbd class="cg-key">&#8593;</kbd><kbd class="cg-key">&#8595;</kbd><kbd class="cg-key">&#8592;</kbd><kbd class="cg-key">&#8594;</kbd>
               <kbd class="cg-key">W</kbd><kbd class="cg-key">A</kbd><kbd class="cg-key">S</kbd><kbd class="cg-key">D</kbd>
               <kbd class="cg-key">P</kbd><kbd class="cg-key">M</kbd><kbd class="cg-key">SPACE</kbd>
             </div>
@@ -158,20 +152,11 @@
 
     <p class="cg-underline" id="cg-hint">Arrows or WASD. P pauses. M is the sound. Space starts.</p>
 
-    <details class="card cg-legend-m">
-      <summary>Who's chasing you</summary>
-      <ul class="cg-legend">
-        <li><b>JEET</b><p>Comes straight at you and never stops. The emptier the book gets, the faster he sells.</p></li>
-        <li><b>RUGGY</b><p>Aims four tiles ahead of you. He isn't chasing you, he's already there.</p></li>
-        <li><b>FUDD</b><p>Works out where you'll be, then doubles it. Nobody knows where he's going, including him.</p></li>
-        <li><b>PAPER</b><p>Chases you until you're close, then bottles it and runs home. Folds every single time.</p></li>
-      </ul>
-    </details>
 
     <nav class="cg-more" aria-label="More games">
       <h2>More to eat</h2>
       <div class="cg-moregrid">
-        <a class="cg-morecard" href="twister.html"><b>TONGUE TWISTER</b><span>it only gets longer</span></a>
+        <a class="cg-morecard" href="game.html"><b>TONGUE RUSH</b><span>the chart is the maze</span></a>
         <a class="cg-morecard" href="whack.html"><b>JEET WHACK</b><span>tacos yes, jeets no</span></a>
       </div>
     </nav>
@@ -189,6 +174,6 @@
 </footer>
 
 <script src="assets/controls.js"></script>
-<script src="assets/game.js"></script>
+<script src="assets/twister.js"></script>
 </body>
 </html>
