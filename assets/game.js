@@ -303,7 +303,36 @@
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++)
       if (MAZE[y][x] === '#' && (y === 0 || MAZE[y - 1][x] !== '#')) g.fillRect(x * T, y * T, T, 3);
 
-    /* 5. outline only the edges that touch open floor */
+    /* 5. outline only the edges that touch open floor.
+       The path is built once and stroked three times: a wide soft neon bloom,
+       a tighter hot core, then the ink line on top. shadowBlur is normally
+       banned here — the site's identity is a hard unblurred drop shadow — but
+       this is baked into the prerendered maze once per layout, not per frame,
+       and the flat walls were the one thing still looking painted next to the
+       glossy sprites. */
+    const edge = new Path2D();
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      if (MAZE[y][x] !== '#') continue;
+      const X = x * T, Y = y * T;
+      if (y === 0 || MAZE[y - 1][x] !== '#') { edge.moveTo(X, Y); edge.lineTo(X + T, Y); }
+      if (y === ROWS - 1 || MAZE[y + 1][x] !== '#') { edge.moveTo(X, Y + T); edge.lineTo(X + T, Y + T); }
+      if (x === 0 || MAZE[y][x - 1] !== '#') { edge.moveTo(X, Y); edge.lineTo(X, Y + T); }
+      if (x === COLS - 1 || MAZE[y][x + 1] !== '#') { edge.moveTo(X + T, Y); edge.lineTo(X + T, Y + T); }
+    }
+    g.save();
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.shadowColor = C.pink;
+    g.shadowBlur = Math.max(6, T * 0.55);
+    g.strokeStyle = 'rgba(255,46,136,.55)';
+    g.lineWidth = Math.max(2, T * 0.10);
+    g.stroke(edge);
+    g.stroke(edge);
+    g.shadowBlur = Math.max(3, T * 0.22);
+    g.strokeStyle = 'rgba(255,143,192,.9)';
+    g.lineWidth = Math.max(1.5, T * 0.055);
+    g.stroke(edge);
+    g.restore();
+
     g.strokeStyle = C.ink; g.lineWidth = 3; g.lineJoin = 'round'; g.lineCap = 'round';
     g.beginPath();
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
@@ -1266,16 +1295,24 @@
   /* Pellet tacos. Three batched Path2Ds — shell, filling, garnish — so the
      whole board is still three fills a frame however many are left. Detail
      drops out by size: under 14px it is a warm dot, over 18px it gets specks. */
+  /* Where the sparkle layer is allowed to twinkle. Gathered here rather than
+     scanned per frame: this runs on the same dirty flag the pellet layer
+     already uses, so a frame costs a few array lookups instead of 483 cell
+     tests. */
+  let sparkSites = [];
+
   function pelletBuild() {
     pelletPath = new Path2D();
     fillingPath = new Path2D();
     garnishPath = new Path2D();
+    sparkSites = [];
     const r = Math.max(2, 0.19 * TILE);
     const showFilling = TILE >= 13;
     const showGarnish = TILE >= 18;
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (pellets[x + y * COLS] !== 1) continue;
       const cx = (x + 0.5) * TILE, cy = (y + 0.5) * TILE + r * 0.28;
+      sparkSites.push(cx, cy);
       pelletPath.moveTo(cx - r, cy);
       pelletPath.arc(cx, cy, r, Math.PI, 0, true);
       pelletPath.closePath();
@@ -1317,6 +1354,50 @@
     pelletDirty = false;
   }
 
+  /* A four-point star with a pinched waist. Two round-capped strokes were the
+     obvious way to draw this and they read as a fat plus sign, not a glint —
+     the taper is the whole difference. Additive, so on a dark board it reads
+     as light rather than as white paint. */
+  function drawSpark(g, x, y, r, a) {
+    const w = r * 0.16;
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = a;
+    g.fillStyle = C.cream2;
+    g.beginPath();
+    g.moveTo(x, y - r);
+    g.quadraticCurveTo(x + w, y - w, x + r, y);
+    g.quadraticCurveTo(x + w, y + w, x, y + r);
+    g.quadraticCurveTo(x - w, y + w, x - r, y);
+    g.quadraticCurveTo(x - w, y - w, x, y - r);
+    g.fill();
+    g.globalAlpha = a * 0.85;
+    g.beginPath(); g.arc(x, y, Math.max(0.8, r * 0.16), 0, 6.283); g.fill();
+    g.restore();
+  }
+
+  /* Twinkle a handful of tacos at a time. Each spark owns a slot; the slot
+     picks a new taco every cycle and fades in and out across it, so the board
+     glitters without anything strobing. */
+  const SPARKS = 7, SPARK_CYCLE = 1.15;
+  function drawSparkle(g) {
+    const n = sparkSites.length >> 1;
+    if (!n || RM) return;
+    for (let i = 0; i < SPARKS; i++) {
+      const phase = clock / SPARK_CYCLE + i * 0.618;
+      const cycle = Math.floor(phase);
+      const t = phase - cycle;
+      /* one smooth hump per cycle, so it fades up and back down */
+      const a = Math.sin(t * Math.PI);
+      if (a < 0.04) continue;
+      /* cheap deterministic shuffle: a large odd stride walks the whole list
+         without repeating a site until it has visited them all */
+      const idx = ((cycle * 7919 + i * 104729) % n + n) % n;
+      drawSpark(g, sparkSites[idx * 2], sparkSites[idx * 2 + 1],
+        Math.max(2.5, TILE * 0.30), a * 0.85);
+    }
+  }
+
   function render() {
     const g = el.ctx; if (!g || !mazeCan) return;
     const T = TILE, W = COLS * T, H = ROWS * T;
@@ -1342,6 +1423,7 @@
        rather than 200. */
     if (SPR.ready && pelletCan) {
       g.drawImage(pelletCan, 0, 0, W, H);
+      drawSparkle(g);
     } else {
       if (!shellGrad) {
         shellGrad = g.createLinearGradient(0, 0, 0, T * 1.2);

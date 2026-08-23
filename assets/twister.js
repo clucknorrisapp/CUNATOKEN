@@ -433,17 +433,23 @@
     var g = el.ctx;
     g.clearRect(0, 0, w, h);
 
-    /* board */
+    /* board: a neon grid rather than a grey one, and one batched path for the
+       whole lattice instead of thirty stroke calls */
     g.fillStyle = COL.plum2;
     g.fillRect(0, 0, w, h);
-    g.strokeStyle = 'rgba(255,255,255,.045)';
+    var grid = new Path2D();
+    for (var i = 1; i < COLS; i++) { grid.moveTo(i * TILE + .5, 0); grid.lineTo(i * TILE + .5, h); }
+    for (var j = 1; j < ROWS; j++) { grid.moveTo(0, j * TILE + .5); grid.lineTo(w, j * TILE + .5); }
+    g.strokeStyle = 'rgba(255,46,136,.16)';
+    g.lineWidth = 2.5;
+    g.stroke(grid);
+    g.strokeStyle = 'rgba(255,143,192,.20)';
     g.lineWidth = 1;
-    for (var i = 1; i < COLS; i++) {
-      g.beginPath(); g.moveTo(i * TILE + .5, 0); g.lineTo(i * TILE + .5, h); g.stroke();
-    }
-    for (var j = 1; j < ROWS; j++) {
-      g.beginPath(); g.moveTo(0, j * TILE + .5); g.lineTo(w, j * TILE + .5); g.stroke();
-    }
+    g.stroke(grid);
+    /* a hot border so the playfield has an edge to read against */
+    g.strokeStyle = 'rgba(255,46,136,.55)';
+    g.lineWidth = 3;
+    g.strokeRect(1.5, 1.5, w - 3, h - 3);
 
     /* food */
     if (food) {
@@ -460,6 +466,16 @@
     if (snake.length) {
       g.lineCap = 'round';
       g.lineJoin = 'round';
+      /* Bloom first, as two wide low-alpha passes. shadowBlur would look
+         better and is far too slow to run on every frame of a 60fps loop;
+         stacked translucent strokes fake it for almost nothing. */
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(255,46,136,.13)';
+      g.lineWidth = TILE * 1.55; strokeBody(g);
+      g.strokeStyle = 'rgba(255,46,136,.16)';
+      g.lineWidth = TILE * 1.05; strokeBody(g);
+      g.restore();
       g.strokeStyle = COL.ink;
       g.lineWidth = TILE * 0.82;
       strokeBody(g);

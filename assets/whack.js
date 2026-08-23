@@ -353,11 +353,21 @@
     for (var i = 0; i < holes.length; i++) {
       var h = holes[i];
 
-      /* the hole */
+      /* the hole, with a neon rim: a wide faint ring then a hot thin one, so
+         the port reads as lit rather than as a flat grey ellipse */
       g.fillStyle = COL.plum2;
       g.beginPath();
       g.ellipse(h.x, h.y + h.r * 0.55, h.r * 1.05, h.r * 0.42, 0, 0, 6.283);
       g.fill();
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(255,46,136,.16)';
+      g.lineWidth = Math.max(4, h.r * 0.30);
+      g.stroke();
+      g.strokeStyle = 'rgba(255,143,192,.55)';
+      g.lineWidth = Math.max(1.5, h.r * 0.07);
+      g.stroke();
+      g.restore();
       g.strokeStyle = COL.ink;
       g.lineWidth = Math.max(2, h.r * 0.09);
       g.stroke();

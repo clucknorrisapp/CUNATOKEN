@@ -388,6 +388,33 @@ invisible no matter how good the render (RUGGY had to be regenerated with
 against JEET's +51), and a chomp pair has to be generated at the same framing
 or the two frames pop between sizes.
 
+**Neon pass.** Every board carries the same treatment so the five games read
+as one arcade: glowing wall edges in TONGUE RUSH (plus a sparkle layer on the
+tacos), a neon grid and a bloomed tongue in TONGUE TWISTER, lit hole rims in
+JEET WHACK, per-colour glow lips on the TACO TRAY plates, and neon rails with
+a hot floor line in CUNA CUMMIN' FOR YA.
+
+The rule throughout is **never `shadowBlur` in a frame**. It is used once, in
+TONGUE RUSH's prerendered maze, which is rebuilt only on layout. Everywhere
+else a glow is faked with stacked wide low-alpha strokes under
+`globalCompositeOperation = 'lighter'`, which costs almost nothing.
+
+That still was not enough on its own, and measuring caught two things:
+
+- TACO TRAY's glow ring was drawn live on all 49 tiles, which cost a whole
+  extra frame (33ms → 50ms at 4x CPU throttle). Plates are now baked to one
+  canvas per type per state on layout, so a tile costs a single `drawImage`.
+- CUNA CUMMIN' FOR YA was rebuilding a full-board radial gradient every frame.
+  Caching the gradient *object* was not enough — the per-pixel fill was the
+  cost, and an empty board still measured 33ms. The glow is baked to a bitmap
+  and blitted.
+
+Both games ended up roughly **twice as fast as before the neon pass**: all
+five now hold a 16.7ms median at 4x CPU throttle, where catcher and tray sat
+at 33.3ms beforehand. If you add an effect here, throttle the CPU 4x and
+measure — the difference between a cheap effect and an expensive one is not
+visible at desk speed.
+
 JEET WHACK draws its targets at ~190px. The maze pellet sprite is drawn at
 ~16px in TONGUE RUSH and has no face, so blown up it is a featureless cream
 dome; the tap game uses the detailed taco for both target kinds and separates

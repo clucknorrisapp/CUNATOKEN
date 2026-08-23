@@ -41,6 +41,11 @@
      you scan a column without looking at any single tile. */
   var PLATE = ['#7c4a10', '#701624', '#10474b', '#3e3e60', '#6b1444'];
   var PLATE_LIT = ['#a4661c', '#95202f', '#186a70', '#575784', '#932061'];
+  /* Low alpha because these are composited with 'lighter': at full strength a
+     glow ring on every one of 49 tiles turns the board into a light box. */
+  var PLATE_GLOW = ['rgba(255,176,60,.22)', 'rgba(255,60,90,.22)',
+                    'rgba(60,230,240,.20)', 'rgba(150,150,255,.20)',
+                    'rgba(255,90,190,.22)'];
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -751,6 +756,7 @@
     var pulse = MOTION ? 1 + Math.sin(performance.now() / 190) * 0.04 : 1.03;
     var inset = Math.max(2, cell * 0.055);
     var side = cell - inset * 2;
+    buildPlates(side);
 
     for (var i = 0; i < N; i++) {
       var t = g[i];
@@ -762,19 +768,8 @@
 
       gx.save();
       gx.globalAlpha = va[i];
-      rrect(gx, cx - s / 2, cy - s / 2, s, s, Math.max(3, cell * 0.18));
-      gx.fillStyle = i === sel ? PLATE_LIT[t] : PLATE[t];
-      gx.fill();
-      gx.lineWidth = Math.max(1.5, cell * 0.05);
-      gx.strokeStyle = COL.ink;
-      gx.stroke();
-
-      /* a soft top light so the plate reads as an object, not a swatch */
-      gx.save();
-      gx.clip();
-      gx.fillStyle = 'rgba(255,255,255,.09)';
-      gx.fillRect(cx - s / 2, cy - s / 2, s, s * 0.42);
-      gx.restore();
+      var plate = (i === sel ? platesLit : plates)[t];
+      if (plate) gx.drawImage(plate, cx - s / 2, cy - s / 2, s, s);
 
       var sz = s * 0.78;
       if (SPR.ready) {
@@ -794,6 +789,54 @@
     if (keyMode && cur >= 0 && cur !== sel) outline(gx, cur, COL.pink, true);
 
     gx.restore();
+  }
+
+  /* One canvas per tile type per state. The neon lip, the ink outline and the
+     top light are all static for a given type, so drawing them live meant
+     redoing the same six canvas operations 49 times a frame — which measured
+     as a full extra frame of work (33ms -> 50ms at 4x CPU throttle). Baked
+     once per layout, a tile costs one drawImage. */
+  var plates = [], platesLit = [], plateSide = 0;
+
+  function buildPlates(side) {
+    var px = Math.max(8, Math.round(side));
+    if (plateSide === px && plates.length) return;
+    plateSide = px;
+    plates = []; platesLit = [];
+    for (var t = 0; t < TYPES.length; t++) {
+      plates.push(makePlate(t, px, false));
+      platesLit.push(makePlate(t, px, true));
+    }
+  }
+
+  function makePlate(t, px, lit) {
+    var pad = Math.ceil(px * 0.10);          /* room for the glow to bleed */
+    var c = document.createElement('canvas');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    c.width = Math.round(px * dpr); c.height = Math.round(px * dpr);
+    var g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var r = Math.max(3, px * 0.18);
+    var lw = Math.max(1.5, px * 0.05);
+    var x = lw, y = lw, w = px - lw * 2, h = px - lw * 2;
+    rrect(g, x, y, w, h, r);
+    g.fillStyle = lit ? PLATE_LIT[t] : PLATE[t];
+    g.fill();
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = PLATE_GLOW[t];
+    g.lineWidth = Math.max(2, px * 0.10);
+    g.stroke();
+    g.restore();
+    g.lineWidth = lw;
+    g.strokeStyle = COL.ink;
+    g.stroke();
+    g.save();
+    g.clip();
+    g.fillStyle = 'rgba(255,255,255,.09)';
+    g.fillRect(x, y, w, h * 0.42);
+    g.restore();
+    return c;
   }
 
   function outline(gx, i, colour, dashed) {

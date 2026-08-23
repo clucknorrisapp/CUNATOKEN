@@ -158,6 +158,7 @@
     el.canvas.style.width = W + 'px';
     el.canvas.style.height = H + 'px';
     el.ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    buildGlow();
 
     player.w = W * 0.20;
     /* Everything in play is stored in board pixels, so a re-layout has to
@@ -591,6 +592,33 @@
     COL.cream = cssVar('--cream', '#fff3d6');
   }
 
+  /* The floor glow, baked to a bitmap once per layout.
+     Caching the gradient object was not enough: filling the whole board with a
+     radial gradient every frame was the entire cost of this game — an empty
+     board still measured 33ms at 4x CPU throttle with nothing falling. A
+     blit of a pre-rendered disc is a fraction of that. Only the top half of
+     the disc is kept, since the rest is below the floor. */
+  var glowCan = null, glowR = 0;
+  function buildGlow() {
+    glowCan = null;
+    if (!H) return;
+    try {
+      var R = Math.round(H * 0.55);
+      if (R < 4) return;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var c = document.createElement('canvas');
+      c.width = Math.round(R * 2 * dpr); c.height = Math.round(R * dpr);
+      var g = c.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var gr = g.createRadialGradient(R, R, 0, R, R, R);
+      gr.addColorStop(0, 'rgba(255,111,176,.20)');
+      gr.addColorStop(1, 'rgba(255,111,176,0)');
+      g.fillStyle = gr;
+      g.fillRect(0, 0, R * 2, R);
+      glowCan = c; glowR = R;
+    } catch (e) { glowCan = null; }
+  }
+
   function draw() {
     if (!el.ctx || !W || !H) return;
     var g = el.ctx, now = performance.now();
@@ -601,22 +629,41 @@
 
     /* A glow under the lips so the bottom of the board reads as the place
        things are meant to end up. */
-    try {
-      var grad = g.createRadialGradient(player.x, H, 0, player.x, H, H * 0.55);
-      grad.addColorStop(0, 'rgba(255,111,176,.20)');
-      grad.addColorStop(1, 'rgba(255,111,176,0)');
-      g.fillStyle = grad;
-      g.fillRect(0, 0, W, H);
-    } catch (e) { }
+    /* Built once and translated, not rebuilt every frame. createRadialGradient
+       per frame was costing more than everything else in this function put
+       together; the gradient lives in user space, so sliding the canvas under
+       it follows the lips for free. */
+    if (glowCan) {
+      g.drawImage(glowCan, player.x - glowR, H - glowR, glowR * 2, glowR);
+    }
 
-    /* Faint guide rails, so a falling thing has something to be measured
-       against and sideways drift is visible before it matters. */
-    g.strokeStyle = 'rgba(255,255,255,.045)';
-    g.lineWidth = 1;
+    /* Guide rails, so a falling thing has something to be measured against and
+       sideways drift is visible before it matters. Neon rather than grey, and
+       batched into one path instead of four strokes. */
+    var rails = new Path2D();
     for (var c = 1; c < 5; c++) {
       var gx = Math.round(W * c / 5) + 0.5;
-      g.beginPath(); g.moveTo(gx, 0); g.lineTo(gx, H); g.stroke();
+      rails.moveTo(gx, 0); rails.lineTo(gx, H);
     }
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = 'rgba(255,46,136,.10)';
+    g.lineWidth = 3; g.stroke(rails);
+    g.strokeStyle = 'rgba(255,143,192,.14)';
+    g.lineWidth = 1; g.stroke(rails);
+    g.restore();
+
+    /* A hot line along the floor: this is the level the lips defend, and it
+       was previously implied by nothing at all. */
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = 'rgba(255,46,136,.30)';
+    g.lineWidth = 10;
+    g.beginPath(); g.moveTo(0, H - 1); g.lineTo(W, H - 1); g.stroke();
+    g.strokeStyle = 'rgba(255,143,192,.75)';
+    g.lineWidth = 2;
+    g.beginPath(); g.moveTo(0, H - 1.5); g.lineTo(W, H - 1.5); g.stroke();
+    g.restore();
 
     for (var i = 0; i < items.length; i++) {
       var it = items[i];
