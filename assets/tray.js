@@ -62,7 +62,7 @@
   var queue = null;                  /* test hook: forced refill order */
 
   var SPR = {
-    img: null, ready: false, cell: 144,
+    img: null, ready: false, cell: 256,
     map: { power: [2, 0], jeet: [4, 0], fudd: [1, 1], paper: [2, 1], open: [0, 0] }
   };
 

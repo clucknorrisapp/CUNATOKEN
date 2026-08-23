@@ -30,7 +30,7 @@
      detailed sprite; the big one is distinguished by size and a glow, not by
      different art. */
   var SPR = {
-    img: null, ready: false, cell: 144,
+    img: null, ready: false, cell: 256,
     map: {
       taco: [2, 0], bigtaco: [2, 0], jeet: [4, 0],
       ruggy: [0, 1], fudd: [1, 1], paper: [2, 1]

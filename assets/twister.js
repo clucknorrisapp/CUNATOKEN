@@ -35,7 +35,7 @@
   /* ── sprites ─────────────────────────────────────────────────────── */
 
   var SPR = {
-    img: null, ready: false, cell: 144,
+    img: null, ready: false, cell: 256,
     map: {
       open: [0, 0], closed: [1, 0], power: [2, 0], pellet: [3, 0],
       jeet: [4, 0], fright: [3, 1]

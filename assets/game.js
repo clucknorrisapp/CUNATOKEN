@@ -180,12 +180,12 @@
   let pelletCan = null, pelletCtx = null;
 
   /* ───────────────────── sprite atlas ─────────────────────
-     One WebP, nine 144px cells, drawn art rather than canvas paths. Every
+     One WebP, nine 256px cells, drawn art rather than canvas paths. Every
      draw falls back to the path version if the atlas has not arrived — an
      older browser without WebP, a blocked request, anything. The game is
      fully playable either way; it just looks hand-drawn instead of rendered. */
   const SPR = {
-    img: null, ready: false, cell: 144,
+    img: null, ready: false, cell: 256,
     map: { open: [0,0], closed: [1,0], power: [2,0], pellet: [3,0], jeet: [4,0],
            ruggy: [0,1], fudd: [1,1], paper: [2,1], fright: [3,1] }
   };
@@ -1304,7 +1304,10 @@
       pelletCtx = pelletCan.getContext('2d');
       pelletCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
       pelletCtx.clearRect(0, 0, W, H);
-      const sz = TILE * 0.92;
+      /* The replacement art is cropped tighter to its cell than the sprite it
+         replaced, so at 0.92 the tacos in adjacent tiles nearly touched and
+         the corridors stopped reading as corridors. */
+      const sz = TILE * 0.78;
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
         if (pellets[x + y * COLS] !== 1) continue;
         drawSprite(pelletCtx, 'pellet', (x + 0.5) * TILE, (y + 0.5) * TILE, sz, 0, false);

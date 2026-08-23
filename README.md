@@ -357,6 +357,37 @@ straight through the board — `.cg-more` was added to the pages and not to the
 list, and showed over the board on three of them. Anything new on a game page
 goes in that rule.
 
+**The art.** `assets/sprites.webp` is one atlas, nine 256px cells, generated
+with Higgsfield (Recraft V4.1 at 2k) and cut out locally. The layout and cell
+order are unchanged from the 144px version it replaced, so every game's cell
+map kept working; only `SPR.cell` moved. It costs 114KB against the old 45KB,
+which is the price of the games looking like this on a retina screen.
+
+Three things about that pipeline are worth keeping:
+
+- **The chasers differ by silhouette, not just hue.** The previous set had
+  JEET and RUGGY as the same ghost shape in two neighbouring warm hues, and at
+  a 39px match-3 tile they read as one type with a colour wobble. They are now
+  an angular spiked one, a hooded one with a trailing tail, a melting goggled
+  one and a folded-paper one. Colour is the last cue, not the only one.
+- **The cutout is a distance-from-background key, not a hard matte.** Every
+  subject is a glowing render on near-black, and the glow is part of the art;
+  a threshold chops it into a hard rim. Alpha is driven by distance from the
+  *measured* background — Recraft returns a slightly different near-black each
+  time (17,7,12 / 38,24,27 / 2,0,3) so assuming pure black does not work.
+- **Crop margin matters more than it sounds.** The first pass padded each
+  sprite to 5.5% of its cell; because the old art ran cell-edge to cell-edge,
+  every game suddenly drew its sprites smaller and JEET WHACK's tacos floated
+  above their holes. Now 1.5%. `game.js` also drops its pellet from 0.92 to
+  0.78 of a tile, because the tighter crop had adjacent tacos almost touching
+  and the corridors stopped reading as corridors.
+
+Two failures worth remembering: a dark violet subject on a dark plum UI is
+invisible no matter how good the render (RUGGY had to be regenerated with
+"brightly lit, NOT dark" and now measures +58 luminance over the background,
+against JEET's +51), and a chomp pair has to be generated at the same framing
+or the two frames pop between sizes.
+
 JEET WHACK draws its targets at ~190px. The maze pellet sprite is drawn at
 ~16px in TONGUE RUSH and has no face, so blown up it is a featureless cream
 dome; the tap game uses the detailed taco for both target kinds and separates

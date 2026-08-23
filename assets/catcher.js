@@ -67,7 +67,7 @@
      glow: `pellet` is drawn for ~16px in the maze and has no face, so at the
      70-odd pixels a falling taco gets here it is a featureless cream dome. */
   var SPR = {
-    img: null, ready: false, cell: 144,
+    img: null, ready: false, cell: 256,
     map: {
       open: [0, 0], closed: [1, 0], taco: [2, 0], big: [2, 0],
       jeet: [4, 0], ruggy: [0, 1], fudd: [1, 1], paper: [2, 1]
