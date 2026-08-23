@@ -381,6 +381,37 @@ main > .section { padding-top: clamp(.9rem, 2.2vw, 1.5rem); padding-bottom: clam
 #cuna-game.cg-whack.cg-touch .cg-gutter { display: none; }
 .cg-stat-clock strong { color: var(--pink-2); }
 
+/* ─────────── the arcade index ─────────── */
+
+.arc-grid {
+  display: grid; gap: .8rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  max-width: 62rem; margin: 0 auto;
+}
+.arc-card {
+  display: block; padding: 1rem 1.1rem; text-decoration: none;
+  background: rgba(36, 4, 15, .62);
+  border: var(--edge); border-radius: 18px; box-shadow: var(--pop);
+  transition: transform .14s ease, box-shadow .14s ease;
+}
+.arc-card:hover, .arc-card:focus-visible {
+  transform: translateY(-3px); box-shadow: var(--pop-lg);
+}
+.arc-card b {
+  display: block;
+  font-family: 'Luckiest Guy', system-ui, sans-serif;
+  font-size: 1.35rem; letter-spacing: .03em; line-height: 1.15;
+  color: var(--cream);
+}
+.arc-card i {
+  display: block; font-style: normal;
+  font-size: .78rem; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--pink);
+  margin: .15rem 0 .45rem;
+}
+.arc-card p { margin: 0; font-size: .9rem; font-weight: 600; color: var(--pink-3); }
+@media (prefers-reduced-motion: reduce) { .arc-card { transition: none; } }
+
 /* ─────────── more games strip ─────────── */
 
 .cg-more { max-width: 62ch; margin: 1.4rem auto 0; text-align: center; }
