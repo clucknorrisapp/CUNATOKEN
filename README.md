@@ -297,6 +297,26 @@ The path art below is therefore still live code, not legacy:
   on the board, so it can afford detail the pellets cannot. `assets/game.js` is one IIFE and uses modern syntax, unlike
 `assets/app.js` which is deliberately ES5-style.
 
+### Reaching the games
+
+`.nav-links` is `display: none` below 980px, so for a while the arcade was
+linked from **only** that row and was completely unreachable from a phone —
+the games shipped and no phone visitor could find them. Two routes exist now,
+both of which survive the breakpoint:
+
+- A gamepad button in the header, inside `.nav-social`, which is the only part
+  of the header that stays visible on mobile. It is on every page.
+- An `#arcade` section in the homepage body, since scrolling is how the site
+  is actually navigated on a phone.
+
+The header button is hooked with `data-nav-play`, **not** `data-social`.
+`app.js` sweeps `[data-social]` and hides any icon whose URL is missing from
+`CONFIG.socials`, so the first version of this button was silently hidden on
+exactly the three pages that load app.js — including the homepage it was
+meant to fix. `scripts/`-free reachability is checked by a test that walks
+every page at 375/390/1440 and asserts at least one *visible* link to a game,
+which is what caught it.
+
 ### The games
 
 Three of them, sharing one sprite atlas, one stylesheet and one input layer:

@@ -169,6 +169,14 @@ a { color: var(--pink-3); }
 .social-btn:hover { background: var(--pink-2); transform: translateY(2px); box-shadow: 0 2px 0 var(--ink); }
 .social-btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--ink); }
 .social-btn[hidden] { display: none; }
+/* The arcade lives on its own page, and below 980px .nav-links is hidden —
+   which left the games with no route at all from a phone. This sits in the
+   socials group because that is the only part of the header that survives
+   the breakpoint. Cream rather than pink so it reads as its own thing next
+   to the two social icons. */
+.social-play { background: var(--cream); color: var(--plum); }
+.social-play:hover { background: var(--cream-2); }
+.social-play[aria-current="page"] { background: var(--pink-3); color: var(--ink); }
 .social-btn svg { width: 19px; height: 19px; fill: currentColor; display: block; }
 
 /* ─────────────── buttons ─────────────── */
@@ -847,3 +855,29 @@ a { color: var(--pink-3); }
   .ca-value, .mint-inline { border: 1px solid #000; }
   .section-title, .footer-line { -webkit-text-stroke-width: 0; color: #000; filter: none; }
 }
+
+/* The arcade grid is defined in game.css, which the homepage does not load. */
+.arc-grid {
+  display: grid; gap: .8rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  max-width: 62rem; margin: 0 auto;
+}
+.arc-card {
+  display: block; padding: 1rem 1.1rem; text-decoration: none;
+  background: rgba(36, 4, 15, .62);
+  border: var(--edge); border-radius: 18px; box-shadow: var(--pop);
+  transition: transform .14s ease, box-shadow .14s ease;
+}
+.arc-card:hover, .arc-card:focus-visible { transform: translateY(-3px); box-shadow: var(--pop-lg); }
+.arc-card b {
+  display: block; font-family: 'Luckiest Guy', system-ui, sans-serif;
+  font-size: 1.3rem; letter-spacing: .03em; line-height: 1.15; color: var(--cream);
+}
+.arc-card i {
+  display: block; font-style: normal; font-size: .76rem; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--pink);
+  margin: .15rem 0 .45rem;
+}
+.arc-card p { margin: 0; font-size: .9rem; font-weight: 600; color: var(--pink-3); }
+.arc-all { text-align: center; margin: 1rem 0 0; }
+@media (prefers-reduced-motion: reduce) { .arc-card { transition: none; } }
