@@ -377,11 +377,32 @@ straight through the board — `.cg-more` was added to the pages and not to the
 list, and showed over the board on three of them. Anything new on a game page
 goes in that rule.
 
-**The art.** `assets/sprites.webp` is one atlas, nine 256px cells, generated
-with Higgsfield (Recraft V4.1 at 2k) and cut out locally. The layout and cell
-order are unchanged from the 144px version it replaced, so every game's cell
-map kept working; only `SPR.cell` moved. It costs 114KB against the old 45KB,
-which is the price of the games looking like this on a retina screen.
+**The art — two atlases, on purpose.**
+
+- `assets/sprites-neo.webp` — nine 256px cells, generated with Higgsfield
+  (Recraft V4.1 at 2k) and cut out locally. Used by TONGUE TWISTER, JEET
+  WHACK, CUNA CUMMIN' FOR YA and TACO TRAY, all of which draw sprites large.
+- `assets/sprites.webp` — the original 144px hand-drawn set. **TONGUE RUSH
+  keeps this**, and that is a deliberate reversal, not a leftover.
+
+The neon set went on all five first and was wrong for the maze game for three
+separate reasons, all of which only show up in a maze:
+
+- The pellet became a full detailed taco. Two hundred of them in tight
+  corridors read as clutter — "a billion tacos" — where the original small
+  cream dome sat quietly and let the corridors read as corridors.
+- The energizer *is* a taco too, so the one pickup that turns the chasers
+  edible became the same object as the 200 you eat by accident, differing
+  only in size. In a corridor packed with tacos, size alone is not a cue.
+- The player frames read as lips-and-tongue at 176px and as a pink smudge at
+  the 18px tile a phone actually gets.
+
+None of that is wrong with the neon art; it is wrong at maze density. The
+other four games draw 40-190px sprites on open boards and are better for it.
+
+The energizer also now carries a **pulsing halo** — two rings on the pickup's
+existing pulse. It is drawn for reduced-motion users too, without the pulse,
+because it answers a legibility question rather than a decorative one.
 
 Three things about that pipeline are worth keeping:
 

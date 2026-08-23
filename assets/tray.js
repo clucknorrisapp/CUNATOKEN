@@ -81,7 +81,7 @@
     im.decoding = 'async';
     im.onload = function () { SPR.ready = true; SPR.img = im; draw(); };
     im.onerror = function () { SPR.ready = false; };
-    im.src = 'assets/sprites.webp';
+    im.src = 'assets/sprites-neo.webp';
   }
 
   /* ── grid maths ───────────────────────────────────────────────────── */

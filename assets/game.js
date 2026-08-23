@@ -180,12 +180,12 @@
   let pelletCan = null, pelletCtx = null;
 
   /* ───────────────────── sprite atlas ─────────────────────
-     One WebP, nine 256px cells, drawn art rather than canvas paths. Every
+     One WebP, nine 144px cells, drawn art rather than canvas paths. Every
      draw falls back to the path version if the atlas has not arrived — an
      older browser without WebP, a blocked request, anything. The game is
      fully playable either way; it just looks hand-drawn instead of rendered. */
   const SPR = {
-    img: null, ready: false, cell: 256,
+    img: null, ready: false, cell: 144,
     map: { open: [0,0], closed: [1,0], power: [2,0], pellet: [3,0], jeet: [4,0],
            ruggy: [0,1], fudd: [1,1], paper: [2,1], fright: [3,1] }
   };
@@ -1341,10 +1341,7 @@
       pelletCtx = pelletCan.getContext('2d');
       pelletCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
       pelletCtx.clearRect(0, 0, W, H);
-      /* The replacement art is cropped tighter to its cell than the sprite it
-         replaced, so at 0.92 the tacos in adjacent tiles nearly touched and
-         the corridors stopped reading as corridors. */
-      const sz = TILE * 0.78;
+      const sz = TILE * 0.92;
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
         if (pellets[x + y * COLS] !== 1) continue;
         drawSprite(pelletCtx, 'pellet', (x + 0.5) * TILE, (y + 0.5) * TILE, sz, 0, false);
@@ -1444,6 +1441,28 @@
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (pellets[x + y * COLS] !== 2) continue;
       const ex = (x + 0.5) * T, ey = (y + 0.5) * T;
+      /* A halo, because "which one turns the chasers edible" was genuinely
+         hard to answer at a glance: the energizer is the same taco as the
+         other 200 on the board, only bigger, and size alone is not a strong
+         enough cue in a corridor packed with tacos. Two expanding rings on
+         the same pulse — there are only four of these, so the per-frame cost
+         is nothing. */
+      {
+        /* Drawn for reduced-motion too, just without the pulse. The halo is
+           answering "which taco makes the chasers edible", which is a
+           legibility question, not a decorative one — dropping it for
+           reduced-motion users would take away the cue and leave the problem. */
+        const ring = RM ? T * 0.86 : T * (0.78 + 0.30 * (puls - 1.0) / 0.12);
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        g.strokeStyle = 'rgba(255,46,136,.30)';
+        g.lineWidth = Math.max(2, T * 0.13);
+        g.beginPath(); g.arc(ex, ey, ring, 0, 6.283); g.stroke();
+        g.strokeStyle = 'rgba(255,236,203,.55)';
+        g.lineWidth = Math.max(1, T * 0.05);
+        g.beginPath(); g.arc(ex, ey, ring * 0.78, 0, 6.283); g.stroke();
+        g.restore();
+      }
       if (!drawSprite(g, 'power', ex, ey, T * 1.20 * puls, 0, false)) {
         drawLoadedTaco(g, ex, ey, T, puls);
       }

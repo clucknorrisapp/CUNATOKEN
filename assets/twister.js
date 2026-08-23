@@ -47,7 +47,7 @@
     im.decoding = 'async';
     im.onload = function () { SPR.img = im; SPR.ready = true; };
     im.onerror = function () { SPR.ready = false; };
-    im.src = 'assets/sprites.webp';
+    im.src = 'assets/sprites-neo.webp';
   }
 
   function drawSpr(name, cx, cy, size) {

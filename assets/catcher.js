@@ -81,7 +81,7 @@
     im.decoding = 'async';
     im.onload = function () { SPR.img = im; SPR.ready = true; draw(); };
     im.onerror = function () { SPR.ready = false; };
-    im.src = 'assets/sprites.webp';
+    im.src = 'assets/sprites-neo.webp';
   }
 
   /* Returns false when the atlas has not loaded, so every call site can draw
