@@ -111,3 +111,49 @@
   margin: .6rem auto 0; max-width: 34rem; text-align: center;
   font-size: .8rem; font-weight: 600; color: var(--pink-3);
 }
+
+/* Photo controls — hidden until there is a photo to control. */
+.ml-photo {
+  display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+  justify-content: center; margin: .9rem 0 0;
+}
+.ml-photo[hidden] { display: none; }
+.ml-zoom { display: flex; align-items: center; gap: .6rem; flex: 1 1 15rem; }
+.ml-zoom span {
+  font-size: .72rem; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--pink-3); white-space: nowrap;
+}
+.ml-zoom input[type="range"] {
+  flex: 1; min-width: 8rem; height: 30px;
+  -webkit-appearance: none; appearance: none;
+  background: transparent; cursor: pointer;
+}
+.ml-zoom input[type="range"]::-webkit-slider-runnable-track {
+  height: 10px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--plum-3), var(--pink));
+  border: 2px solid var(--ink);
+}
+.ml-zoom input[type="range"]::-moz-range-track {
+  height: 10px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--plum-3), var(--pink));
+  border: 2px solid var(--ink);
+}
+.ml-zoom input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 26px; height: 26px; margin-top: -10px;
+  border-radius: 50%; background: var(--cream);
+  border: 3px solid var(--ink); box-shadow: 0 2px 0 var(--ink);
+}
+.ml-zoom input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--cream); border: 3px solid var(--ink);
+}
+.ml-zoom input[type="range"]:focus-visible { outline: 3px solid var(--pink); outline-offset: 4px; }
+
+.ml-help {
+  margin: .7rem auto 0; max-width: 38rem; text-align: center;
+  font-size: .78rem; font-weight: 600; line-height: 1.5;
+  color: var(--pink-3); opacity: .85;
+}
+
+.ml-row .btn[disabled] { opacity: .4; cursor: default; box-shadow: none; }

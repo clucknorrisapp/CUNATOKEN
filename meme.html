@@ -97,6 +97,17 @@
         <button class="btn btn-ghost btn-sm" type="button" data-ml="ring" aria-pressed="true" hidden>RING ON</button>
       </div>
 
+      <div class="ml-photo" id="ml-photo" hidden>
+        <label class="ml-zoom">
+          <span>Zoom the picture</span>
+          <input id="ml-zoom" type="range" min="35" max="400" value="100" step="1"
+                 aria-label="Zoom the picture">
+        </label>
+        <button class="btn btn-ghost btn-sm" type="button" data-ml="recenter">RECENTER</button>
+      </div>
+
+      <p class="ml-help">Drag the background to move your picture · pinch or scroll to zoom it · drag a sticker to move it, corner to resize, ✕ to remove, ⇄ to flip</p>
+
       <p class="ml-sub">…or place them yourself</p>
       <div class="ml-palette" id="ml-palette" role="group" aria-label="Stickers"></div>
 
@@ -115,6 +126,7 @@
         <button class="btn btn-ghost btn-sm" type="button" data-ml="fit">FILL</button>
         <button class="btn btn-ghost btn-sm" type="button" data-ml="drop">REMOVE PICTURE</button>
         <button class="btn btn-ghost btn-sm" type="button" data-ml="clear">CLEAR STICKERS</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-ml="undo">UNDO</button>
       </div>
 
       <div class="ml-row ml-out">

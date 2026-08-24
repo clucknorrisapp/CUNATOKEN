@@ -66,6 +66,7 @@
   var sel = -1;
   var W = 1080, H = 1080;      /* export pixels */
   var view = 1;                /* css px per export px */
+  var ph = { z: 1, ox: 0, oy: 0 };   /* zoom and pan of the photo itself */
   var ring = true;             /* the automatic PFP ring */
   var autoCap = false;         /* captions we wrote, and may overwrite */
 
@@ -83,10 +84,12 @@
     b.src = 'assets/logo.jpg';
   }
 
-  function drawSticker(g, kind, cx, cy, size, rot) {
+  function drawSticker(g, kind, cx, cy, size, rot, flip) {
     g.save();
     g.translate(cx, cy);
     if (rot) g.rotate(rot);
+    /* the badge carries readable text, so it never mirrors */
+    if (flip && kind !== 'badge') g.scale(-1, 1);
     if (kind === 'badge') {
       if (!LOGO.ready) { g.restore(); return false; }
       /* the badge is a square jpg; clip it round so it drops in as a coin */
@@ -136,13 +139,48 @@
 
   /* ── drawing ─────────────────────────────────────────────────────── */
 
+  /* The photo is a picture you place, not a fixed background: cover/contain
+     gives the starting scale, then zoom and pan move it under the frame. For
+     a PFP that is the whole game — the face is never in the middle of the
+     original shot. */
   function fitPhoto() {
     if (!photo) return null;
     var iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
     if (!iw || !ih) return null;
-    var s = (photoFit === 'cover') ? Math.max(W / iw, H / ih) : Math.min(W / iw, H / ih);
+    var base = (photoFit === 'cover') ? Math.max(W / iw, H / ih) : Math.min(W / iw, H / ih);
+    var s = base * ph.z;
     var w = iw * s, h = ih * s;
-    return { x: (W - w) / 2, y: (H - h) / 2, w: w, h: h };
+    return { x: (W - w) / 2 + ph.ox, y: (H - h) / 2 + ph.oy, w: w, h: h };
+  }
+
+  /* Stop short of dragging the picture off the frame entirely. When it is
+     smaller than the frame it may still drift a little, so a shrunken photo
+     can be nudged off-centre on purpose. */
+  function clampPan() {
+    var f = fitPhoto();
+    if (!f) return;
+    var mx = (f.w - W) / 2, my = (f.h - H) / 2;
+    if (mx < 0) mx = W * 0.28;
+    if (my < 0) my = H * 0.28;
+    ph.ox = clamp(-mx, ph.ox, mx);
+    ph.oy = clamp(-my, ph.oy, my);
+  }
+
+  function resetPhoto() { ph.z = 1; ph.ox = 0; ph.oy = 0; }
+
+  /* Keep whatever is under (px, py) under (px, py).
+     The fit is centre-anchored — x = (W - w) / 2 + ox — so the frame centre
+     already holds still when w grows; solving screen(u) for a fixed point
+     gives ox' = k·ox + (1 - k)·(px - W/2). Treating ox as a plain top-left
+     offset instead slides the picture every time you touch the zoom. */
+  function zoomAt(factor, px, py) {
+    var z0 = ph.z;
+    ph.z = clamp(0.35, ph.z * factor, 6);
+    var k = ph.z / z0;
+    ph.ox = k * ph.ox + (1 - k) * (px - W / 2);
+    ph.oy = k * ph.oy + (1 - k) * (py - H / 2);
+    clampPan();
+    syncZoom();
   }
 
   function draw() {
@@ -150,17 +188,19 @@
     if (!g) return;
     g.clearRect(0, 0, W, H);
 
-    /* backdrop */
+    /* Backdrop first, always — once the photo can be zoomed out or panned it
+       no longer covers the frame, and a round PFP export would otherwise come
+       back with transparent corners. */
+    var grad = g.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#6b1444');
+    grad.addColorStop(1, '#24040f');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+
     if (photo) {
       var f = fitPhoto();
-      if (photoFit === 'contain') { g.fillStyle = '#3d0a26'; g.fillRect(0, 0, W, H); }
       if (f) g.drawImage(photo, f.x, f.y, f.w, f.h);
     } else {
-      var grad = g.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, '#6b1444');
-      grad.addColorStop(1, '#24040f');
-      g.fillStyle = grad;
-      g.fillRect(0, 0, W, H);
       g.fillStyle = 'rgba(255,143,192,.75)';
       g.font = '600 ' + Math.round(W * 0.032) + 'px "Baloo 2", system-ui, sans-serif';
       g.textAlign = 'center';
@@ -169,7 +209,7 @@
 
     for (var i = 0; i < items.length; i++) {
       var it = items[i];
-      drawSticker(g, it.k, it.x, it.y, it.s, it.r);
+      drawSticker(g, it.k, it.x, it.y, it.s, it.r, it.f);
     }
 
     drawCaption(g, el.top.value, 'top');
@@ -178,7 +218,7 @@
     /* The ring goes over the lot, because its whole job is to survive whatever
        is underneath it once a client crops the avatar round. */
     if (mode === 'pfp' && ring) drawRing(g);
-    if (mode === 'pfp' && !ring) drawPfpGuide(g);
+    if (mode === 'pfp') drawPfpGuide(g);
     if (sel >= 0 && sel < items.length) drawHandles(g, items[sel]);
   }
 
@@ -203,6 +243,19 @@
       lines = wrap(g, txt.toUpperCase(), size, W - pad * 2);
     }
     var lh = size * 1.06;
+
+    /* Cream text on someone's holiday photo is a coin flip. A soft band that
+       fades out costs nothing and makes every caption legible. */
+    if (photo) {
+      var band = lines.length * lh + pad * 1.5;
+      var gy0 = where === 'top' ? 0 : H, gy1 = where === 'top' ? band : H - band;
+      var sc = g.createLinearGradient(0, gy0, 0, gy1);
+      sc.addColorStop(0, 'rgba(36,4,15,.55)');
+      sc.addColorStop(1, 'rgba(36,4,15,0)');
+      g.fillStyle = sc;
+      g.fillRect(0, where === 'top' ? 0 : H - band, W, band);
+    }
+
     for (var i = 0; i < lines.length; i++) {
       var y = where === 'top' ? pad + i * lh : H - pad - (lines.length - 1 - i) * lh;
       g.font = '400 ' + size + 'px "Luckiest Guy", system-ui, sans-serif';
@@ -227,14 +280,23 @@
     return lines;
   }
 
-  /* A ring showing what a circular avatar crop will actually keep. Drawn on
-     the preview only — stripped before export. */
+  /* What the circular crop will throw away, shown while you are framing.
+     Preview only — render() stubs this out, so none of it reaches the file.
+     Without it, "make the picture fit the ring" is guesswork. */
   function drawPfpGuide(g) {
+    var R = Math.min(W, H) / 2;
     g.save();
-    g.strokeStyle = 'rgba(255,236,203,.55)';
-    g.setLineDash([W * 0.02, W * 0.02]);
-    g.lineWidth = Math.max(2, W * 0.006);
-    g.beginPath(); g.arc(W / 2, H / 2, W / 2 - g.lineWidth, 0, 6.283); g.stroke();
+    g.beginPath();
+    g.rect(0, 0, W, H);
+    g.arc(W / 2, H / 2, R, 0, 6.283);
+    g.fillStyle = 'rgba(20,2,9,.62)';
+    g.fill('evenodd');
+    if (!ring) {
+      g.strokeStyle = 'rgba(255,236,203,.55)';
+      g.setLineDash([W * 0.02, W * 0.02]);
+      g.lineWidth = Math.max(2, W * 0.006);
+      g.beginPath(); g.arc(W / 2, H / 2, R - g.lineWidth, 0, 6.283); g.stroke();
+    }
     g.restore();
   }
 
@@ -294,6 +356,16 @@
     g.moveTo(-r - k, -r - k); g.lineTo(-r + k, -r + k);
     g.moveTo(-r + k, -r - k); g.lineTo(-r - k, -r + k);
     g.stroke();
+    /* flip, top-right — a keyboard shortcut is no use on a phone */
+    g.fillStyle = '#ffeccb';
+    g.beginPath(); g.arc(r, -r, W * 0.022, 0, 6.283); g.fill();
+    g.strokeStyle = '#24040f'; g.lineWidth = Math.max(2, W * 0.004); g.stroke();
+    g.lineWidth = Math.max(2, W * 0.005);
+    g.beginPath();
+    g.moveTo(r, -r - k); g.lineTo(r, -r + k);
+    g.moveTo(r - k * 1.5, -r - k * 0.45); g.lineTo(r - k * 0.55, -r); g.lineTo(r - k * 1.5, -r + k * 0.45);
+    g.moveTo(r + k * 1.5, -r - k * 0.45); g.lineTo(r + k * 0.55, -r); g.lineTo(r + k * 1.5, -r + k * 0.45);
+    g.stroke();
     g.restore();
   }
 
@@ -323,8 +395,31 @@
     var q = local(it, p), r = it.s / 2, t = W * 0.04;
     if (Math.hypot(q.x - r, q.y - r) <= t) return 'size';
     if (Math.hypot(q.x + r, q.y + r) <= t) return 'del';
+    if (Math.hypot(q.x - r, q.y + r) <= t) return 'flip';
     return null;
   }
+
+  /* ── undo ────────────────────────────────────────────────────────── */
+
+  /* Every destructive or fiddly action pushes one snapshot first. It is a
+     toy, so a shallow stack of plain JSON is enough — the photo is not in it,
+     only where the photo is sitting. */
+  var past = [];
+  function snap() {
+    past.push(JSON.stringify({ i: items, t: el.top.value, b: el.bottom.value, p: ph, c: autoCap }));
+    if (past.length > 30) past.shift();
+    syncUndo();
+  }
+  function undoOnce() {
+    var raw = past.pop();
+    if (!raw) return;
+    var o = JSON.parse(raw);
+    items = o.i; el.top.value = o.t; el.bottom.value = o.b;
+    ph = o.p; autoCap = !!o.c; sel = -1;
+    clampPan(); syncZoom(); draw(); syncUndo();
+    setHint('');
+  }
+  function syncUndo() { if (el.undo) el.undo.disabled = !past.length; }
 
   /* ── interaction ─────────────────────────────────────────────────── */
 
@@ -338,9 +433,11 @@
 
     var p = pointers[e.pointerId];
     var g = grip(items[sel], p);
-    if (g === 'del') { items.splice(sel, 1); sel = -1; draw(); return; }
+    if (g === 'del') { snap(); items.splice(sel, 1); sel = -1; draw(); return; }
+    if (g === 'flip') { snap(); items[sel].f = !items[sel].f; draw(); return; }
     if (g === 'size') {
       var it = items[sel];
+      snap();
       drag = { mode: 'size', id: e.pointerId, s0: it.s, r0: it.r || 0,
                d0: Math.hypot(p.x - it.x, p.y - it.y),
                a0: Math.atan2(p.y - it.y, p.x - it.x) };
@@ -353,7 +450,14 @@
       var picked = items.splice(i, 1)[0];
       items.push(picked);
       sel = items.length - 1;
+      snap();
       drag = { mode: 'move', id: e.pointerId, dx: p.x - picked.x, dy: p.y - picked.y };
+    } else if (photo) {
+      /* Nothing under the finger and there is a picture: you are moving the
+         picture. This is the part nobody guesses, hence the line of help
+         under the stage. */
+      snap();
+      drag = { mode: 'pan', id: e.pointerId, dx: p.x - ph.ox, dy: p.y - ph.oy };
     }
     draw();
   }
@@ -361,14 +465,19 @@
   var pinch = null;
   function startPinch() {
     drag = null;
-    if (sel < 0) return;
     var ids = Object.keys(pointers);
-    var a = pointers[ids[0]], b = pointers[ids[1]], it = items[sel];
-    pinch = {
-      d0: Math.hypot(b.x - a.x, b.y - a.y) || 1,
-      a0: Math.atan2(b.y - a.y, b.x - a.x),
-      s0: it.s, r0: it.r || 0
-    };
+    var a = pointers[ids[0]], b = pointers[ids[1]];
+    var base = { d0: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+                 a0: Math.atan2(b.y - a.y, b.x - a.x) };
+    if (sel >= 0) {
+      var it = items[sel];
+      base.what = 'item'; base.s0 = it.s; base.r0 = it.r || 0;
+    } else if (photo) {
+      snap();
+      base.what = 'photo'; base.z0 = ph.z; base.ox = ph.ox; base.oy = ph.oy;
+      base.cx = (a.x + b.x) / 2; base.cy = (a.y + b.y) / 2;
+    } else return;
+    pinch = base;
   }
 
   function onMove(e) {
@@ -377,18 +486,32 @@
     if (e.cancelable) e.preventDefault();
 
     var ids = Object.keys(pointers);
-    if (pinch && ids.length === 2 && sel >= 0) {
-      var a = pointers[ids[0]], b = pointers[ids[1]], it = items[sel];
+    if (pinch && ids.length === 2) {
+      var a = pointers[ids[0]], b = pointers[ids[1]];
       var d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
       var ang = Math.atan2(b.y - a.y, b.x - a.x);
-      it.s = clamp(W * 0.06, pinch.s0 * (d / pinch.d0), W * 1.6);
-      it.r = pinch.r0 + (ang - pinch.a0);
+      if (pinch.what === 'item' && sel >= 0) {
+        var it = items[sel];
+        it.s = clamp(W * 0.06, pinch.s0 * (d / pinch.d0), W * 1.6);
+        it.r = pinch.r0 + (ang - pinch.a0);
+      } else if (pinch.what === 'photo') {
+        var k = clamp(0.35, pinch.z0 * (d / pinch.d0), 6) / pinch.z0;
+        ph.z = pinch.z0 * k;
+        ph.ox = k * pinch.ox + (1 - k) * (pinch.cx - W / 2);
+        ph.oy = k * pinch.oy + (1 - k) * (pinch.cy - H / 2);
+        clampPan(); syncZoom();
+      }
       draw();
       return;
     }
     if (!drag || drag.id !== e.pointerId) return;
     var p = pointers[e.pointerId];
     var t = items[sel];
+    if (drag.mode === 'pan') {
+      ph.ox = p.x - drag.dx; ph.oy = p.y - drag.dy;
+      clampPan(); draw();
+      return;
+    }
     if (!t) return;
     if (drag.mode === 'move') {
       t.x = p.x - drag.dx; t.y = p.y - drag.dy;
@@ -435,6 +558,7 @@
   function addSticker(k) {
     /* Dropped slightly off-centre and rotated a touch each time, so stacking
        three does not look like one. */
+    snap();
     var n = items.length;
     items.push({
       k: k,
@@ -457,6 +581,7 @@
      stickers at mixed sizes and angles, never let two overlap, and stay inside
      the circle when we are making a PFP. */
   function autoCompose() {
+    snap();
     var minDim = Math.min(W, H);
     var pfp = (mode === 'pfp');
     var cx = W / 2, cy = H / 2;
@@ -499,7 +624,8 @@
       }
       if (!spot) continue;
       placed.push({ k: picks[i], x: spot.x, y: spot.y, s: size,
-                    r: (Math.random() * 44 - 22) * Math.PI / 180 });
+                    r: (Math.random() * 44 - 22) * Math.PI / 180,
+                    f: Math.random() < 0.5 });
     }
 
     items = placed;
@@ -525,6 +651,19 @@
 
   /* ── photo in ────────────────────────────────────────────────────── */
 
+  /* A 12-megapixel phone photo drags like treacle and buys nothing at 1080px
+     across. Downscale once on the way in and everything after is smooth. */
+  function shrink(im) {
+    var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+    var max = Math.max(iw, ih), cap = 2400;
+    if (max <= cap) return im;
+    var k = cap / max;
+    var c = document.createElement('canvas');
+    c.width = Math.round(iw * k); c.height = Math.round(ih * k);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    return c;
+  }
+
   function readFile(file) {
     if (!file) return;
     if (!/^image\//.test(file.type)) { setHint('That is not an image.'); return; }
@@ -533,11 +672,15 @@
     fr.onload = function () {
       var im = new Image();
       im.onload = function () {
-        photo = im;
+        snap();
+        photo = shrink(im);
+        resetPhoto();
+        syncPhotoUI();
         /* "use your pic to make something cool" — so the first picture in
            lays itself out. Anything already placed by hand is left alone. */
         if (!items.length) autoCompose();
-        else { setHint(''); draw(); }
+        else draw();
+        setHint('Drag the picture to move it, or use the zoom slider.');
       };
       im.onerror = function () { setHint('Could not read that picture.'); };
       im.src = fr.result;
@@ -547,6 +690,30 @@
   }
 
   function setHint(t) { if (el.hint) el.hint.textContent = t || ''; }
+
+  /* One way in and out of a mode, so the click handler and the test hook can
+     never drift apart. Captions we wrote ourselves come off in PFP — they land
+     on the ring and nobody wants a round avatar with a slogan across it. */
+  function applyMode(m) {
+    mode = m;
+    if (m === 'pfp' && autoCap) { el.top.value = ''; el.bottom.value = ''; autoCap = false; }
+    document.querySelectorAll('[data-ml="mode"]').forEach(function (x) {
+      x.setAttribute('aria-pressed', x.getAttribute('data-mode') === m ? 'true' : 'false');
+    });
+    syncRing();
+    clampPan();
+    layout();
+  }
+
+  function syncZoom() {
+    if (el.zoom && document.activeElement !== el.zoom) el.zoom.value = Math.round(ph.z * 100);
+  }
+
+  /* The photo controls are noise until there is a photo. */
+  function syncPhotoUI() {
+    if (el.photoRow) el.photoRow.hidden = !photo;
+    syncZoom();
+  }
 
   /* The ring only means anything on a round crop, so its control only exists
      in PFP mode. */
@@ -684,16 +851,50 @@
     el.hint = $('ml-hint');
     el.file = $('ml-file');
     el.ring = document.querySelector('[data-ml="ring"]');
+    el.zoom = $('ml-zoom');
+    el.photoRow = $('ml-photo');
+    el.undo = document.querySelector('[data-ml="undo"]');
 
     loadAssets();
     paintPalette();
     syncRing();
+    syncPhotoUI();
+    syncUndo();
     layout();
 
     el.canvas.addEventListener('pointerdown', onDown);
     el.canvas.addEventListener('pointermove', onMove);
     el.canvas.addEventListener('pointerup', onUp);
     el.canvas.addEventListener('pointercancel', onUp);
+
+    if (el.zoom) {
+      var zSnapped = false;
+      el.zoom.addEventListener('pointerdown', function () { zSnapped = false; });
+      el.zoom.addEventListener('input', function () {
+        if (!photo) return;
+        if (!zSnapped) { snap(); zSnapped = true; }
+        var want = clamp(0.35, Number(el.zoom.value) / 100, 6);
+        zoomAt(want / ph.z, W / 2, H / 2);
+        draw();
+      });
+      el.zoom.addEventListener('change', function () { zSnapped = false; });
+    }
+
+    /* Wheel scales whatever you are working on: the selected sticker, or the
+       picture under the pointer if nothing is selected. */
+    el.canvas.addEventListener('wheel', function (e) {
+      var k = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+      if (sel >= 0 && items[sel]) {
+        e.preventDefault();
+        items[sel].s = clamp(W * 0.06, items[sel].s * k, W * 1.6);
+        draw();
+      } else if (photo) {
+        e.preventDefault();
+        var p = toCanvas(e);
+        zoomAt(k, p.x, p.y);
+        draw();
+      }
+    }, { passive: false });
 
     /* Once someone types their own line, SURPRISE ME stops rewriting it. */
     var typed = function () { autoCap = false; draw(); };
@@ -729,12 +930,7 @@
       if (!b) return;
       var a = b.getAttribute('data-ml');
       if (a === 'mode') {
-        mode = b.getAttribute('data-mode');
-        document.querySelectorAll('[data-ml="mode"]').forEach(function (x) {
-          x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
-        });
-        syncRing();
-        layout();
+        applyMode(b.getAttribute('data-mode'));
       } else if (a === 'auto') {
         autoCompose();
       } else if (a === 'ring') {
@@ -743,22 +939,45 @@
         draw();
       } else if (a === 'x') {
         postToX();
+      } else if (a === 'undo') {
+        undoOnce();
+      } else if (a === 'recenter') {
+        snap(); resetPhoto(); syncZoom(); draw(); setHint('Picture back where it started.');
       } else if (a === 'fit') {
+        snap();
         photoFit = photoFit === 'cover' ? 'contain' : 'cover';
         b.textContent = photoFit === 'cover' ? 'FILL' : 'FIT';
-        draw();
+        clampPan(); draw();
       } else if (a === 'clear') {
+        snap();
         items = []; sel = -1; el.top.value = ''; el.bottom.value = ''; autoCap = false; draw();
       } else if (a === 'drop') {
-        photo = null; draw(); setHint('');
+        snap();
+        photo = null; resetPhoto(); syncPhotoUI(); draw(); setHint('');
       } else if (a === 'save') download();
       else if (a === 'share') share();
     });
 
     document.addEventListener('keydown', function (e) {
       if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
-      if ((e.key === 'Delete' || e.key === 'Backspace') && sel >= 0) {
-        e.preventDefault(); items.splice(sel, 1); sel = -1; draw();
+      var k = e.key;
+      if ((e.ctrlKey || e.metaKey) && (k === 'z' || k === 'Z')) { e.preventDefault(); undoOnce(); return; }
+      if ((k === 'Delete' || k === 'Backspace') && sel >= 0) {
+        e.preventDefault(); snap(); items.splice(sel, 1); sel = -1; draw(); return;
+      }
+      if ((k === 'f' || k === 'F') && sel >= 0) {
+        e.preventDefault(); snap(); items[sel].f = !items[sel].f; draw(); return;
+      }
+      /* Arrows nudge whatever is selected, or the picture when nothing is. */
+      var dx = (k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0);
+      var dy = (k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0);
+      if (dx || dy) {
+        var step = W * (e.shiftKey ? 0.04 : 0.01);
+        if (sel >= 0 && items[sel]) {
+          e.preventDefault(); items[sel].x += dx * step; items[sel].y += dy * step; draw();
+        } else if (photo) {
+          e.preventDefault(); ph.ox += dx * step; ph.oy += dy * step; clampPan(); draw();
+        }
       }
     });
 
@@ -779,11 +998,16 @@
       s: function () {
         return { mode: mode, W: W, H: H, items: items.length, sel: sel,
                  photo: !!photo, top: el.top.value, bottom: el.bottom.value,
-                 ring: ring, autoCap: autoCap };
+                 ring: ring, autoCap: autoCap, z: ph.z, flips: items.filter(function (i) { return i.f; }).length };
       },
       add: function (k) { addSticker(k); return items.length; },
-      setMode: function (m) { mode = m; syncRing(); layout(); },
+      setMode: function (m) { applyMode(m); },
       auto: function () { autoCompose(); return items.map(function (i) { return { k: i.k, x: i.x, y: i.y, s: i.s }; }); },
+      photo: function () { return { z: ph.z, ox: ph.ox, oy: ph.oy, fit: photoFit, box: fitPhoto() }; },
+      zoom: function (z) { if (z !== undefined) { zoomAt(z / ph.z, W / 2, H / 2); draw(); } return ph.z; },
+      pan: function (x, y) { ph.ox += x; ph.oy += y; clampPan(); draw(); return { ox: ph.ox, oy: ph.oy }; },
+      undo: function () { undoOnce(); return past.length; },
+      undoDepth: function () { return past.length; },
       ring: function (v) { if (v !== undefined) { ring = !!v; syncRing(); draw(); } return ring; },
       xUrl: xUrl,
       render: function () { return new Promise(function (res) { render(function (b, c) { res({ w: c.width, h: c.height, bytes: b ? b.size : 0 }); }); }); }
