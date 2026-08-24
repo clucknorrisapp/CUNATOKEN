@@ -220,6 +220,10 @@
     if (mode === 'pfp' && ring) drawRing(g);
     if (mode === 'pfp') drawPfpGuide(g);
     if (sel >= 0 && sel < items.length) drawHandles(g, items[sel]);
+
+    /* render() draws too; scheduling from inside it would just chase its own
+       tail until the key matched. */
+    if (!rendering) schedulePrerender();
   }
 
   /* Captions are drawn with a heavy ink outline rather than a shadow, because
@@ -674,6 +678,7 @@
       im.onload = function () {
         snap();
         photo = shrink(im);
+        photo.__cunaId = ++photoSeq;
         resetPhoto();
         syncPhotoUI();
         /* "use your pic to make something cool" — so the first picture in
@@ -690,6 +695,15 @@
   }
 
   function setHint(t) { if (el.hint) el.hint.textContent = t || ''; }
+
+  function hintLink(t, url) {
+    if (!el.hint) return;
+    el.hint.textContent = t + ' ';
+    var a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = 'Open the post \u2192';
+    el.hint.appendChild(a);
+  }
 
   /* One way in and out of a mode, so the click handler and the test hook can
      never drift apart. Captions we wrote ourselves come off in PFP — they land
@@ -726,7 +740,11 @@
 
   /* ── export ──────────────────────────────────────────────────────── */
 
-  function render(cb) {
+  var rendering = false;
+
+  /* The export, drawn but not yet encoded. */
+  function buildExport() {
+    rendering = true;
     var out = document.createElement('canvas');
     out.width = W; out.height = H;
     var g = out.getContext('2d');
@@ -753,7 +771,27 @@
       out = round;
     }
     draw();
+    rendering = false;
+    return out;
+  }
+
+  function render(cb) {
+    var out = buildExport();
     out.toBlob(function (blob) { cb(blob, out); }, 'image/png');
+  }
+
+  /* A finished PNG with no await anywhere: toDataURL encodes synchronously,
+     and base64 unpacks synchronously, so this can run inside a click and the
+     share sheet still counts the gesture as live. Costs a short freeze, which
+     is a fair trade against sharing yesterday's picture. */
+  function renderFileSync() {
+    try {
+      var url = buildExport().toDataURL('image/png');
+      var bin = atob(url.slice(url.indexOf(',') + 1));
+      var arr = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new File([new Blob([arr], { type: 'image/png' })], 'cuna.png', { type: 'image/png' });
+    } catch (e) { return null; }
   }
 
   function saveBlob(blob) {
@@ -767,15 +805,60 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
 
-  function copyBlob(blob, done) {
-    try {
-      if (navigator.clipboard && window.ClipboardItem) {
-        navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-          .then(function () { done(true); }, function () { done(false); });
-        return;
-      }
-    } catch (e) { }
-    done(false);
+  /* Safari — which is every iPhone — only lets you call navigator.share or
+     clipboard.write while the user gesture is still alive, and toBlob is
+     async, so by the time the PNG exists the gesture is gone and the share
+     dies silently. Keep a finished PNG on hand instead: the click then hands
+     the file straight over with nothing to wait for. */
+  var cache = { blob: null, key: '', busy: false };
+  var photoSeq = 0;
+
+  function stateKey() {
+    return [mode, ring, photoFit, el.top.value, el.bottom.value,
+            ph.z.toFixed(3), Math.round(ph.ox), Math.round(ph.oy),
+            photo ? photo.__cunaId : 0,
+            items.map(function (i) {
+              return i.k + Math.round(i.x) + ',' + Math.round(i.y) + ',' +
+                     Math.round(i.s) + ',' + (i.r || 0).toFixed(2) + (i.f ? 'f' : '');
+            }).join(';')].join('|');
+  }
+
+  var preT = 0;
+  function schedulePrerender() {
+    clearTimeout(preT);
+    preT = setTimeout(function () {
+      var key = stateKey();
+      if (cache.busy || cache.key === key) return;
+      cache.busy = true;
+      render(function (blob) {
+        cache.busy = false;
+        if (blob) { cache.blob = blob; cache.key = key; }
+      });
+    }, 700);
+  }
+
+  /* The ready-made file, or null when the picture has moved on since. */
+  function freshFile() {
+    if (!cache.blob || cache.key !== stateKey()) return null;
+    try { return new File([cache.blob], 'cuna.png', { type: 'image/png' }); } catch (e) { return null; }
+  }
+
+  function renderBlob() {
+    return new Promise(function (res, rej) {
+      render(function (blob) { blob ? res(blob) : rej(new Error('no blob')); });
+    });
+  }
+
+  /* A share sheet is the right answer on a phone — it hands X the actual file
+     — and the wrong one on a desktop, where it opens an OS dialog that
+     usually cannot post to X at all. */
+  function handheld() {
+    return (navigator.maxTouchPoints || 0) > 0 &&
+           !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  }
+
+  function canShareFile(f) {
+    return !!(f && navigator.share && navigator.canShare && navigator.canShare({ files: [f] }));
   }
 
   function download() {
@@ -803,39 +886,83 @@
      in it — paste, post, done. The tab is opened up front, inside the click,
      or the popup blocker eats it while toBlob is still working. */
   function postToX() {
+    /* Phone: the share sheet carries the PNG itself into the X app, so the
+       picture never has to touch the camera roll. Use the export kept warm in
+       the background, or build one on the spot if it has gone stale — either
+       way it is the picture on screen right now. */
+    var f = freshFile() || (handheld() ? renderFileSync() : null);
+    if (handheld() && canShareFile(f)) {
+      setHint('Pick X — the picture goes with it.');
+      navigator.share({ files: [f], text: xText() }).then(function () { }, function (err) {
+        /* cancelled is not a failure; anything else falls back to the composer */
+        if (err && err.name === 'AbortError') { setHint(''); return; }
+        clipboardRoute();
+      });
+      return;
+    }
+    clipboardRoute();
+  }
+
+  /* Desktop, or a phone that will not share files: X's web intent cannot
+     carry an image, so the PNG goes to the clipboard and the composer opens
+     with the words already written. The ClipboardItem is built here, inside
+     the click, from a promise of the PNG — Safari rejects one built later. */
+  function clipboardRoute() {
+    var ready = cache.blob && cache.key === stateKey()
+      ? Promise.resolve(cache.blob) : renderBlob();
+
+    /* Clipboard first: window.open consumes the transient activation, and a
+       clipboard write without one is refused outright on Safari. */
+    var wrote = null;
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        wrote = navigator.clipboard.write([new ClipboardItem({ 'image/png': ready })]);
+      }
+    } catch (e) { wrote = null; }
+
     var win = null;
     try { win = window.open('', '_blank'); } catch (e) { }
-    render(function (blob) {
-      var go = function (msg) {
-        setHint(msg);
-        var u = xUrl();
-        if (win && !win.closed) { try { win.opener = null; } catch (e) { } win.location.href = u; }
-        else window.open(u, '_blank', 'noopener');
-      };
-      if (!blob) { go('Post is ready — the image did not build, try SAVE PNG.'); return; }
-      copyBlob(blob, function (copied) {
-        if (copied) { go('Image copied. Paste it into the post.'); }
-        else { saveBlob(blob); go('Image saved. Attach it to the post.'); }
-      });
-    });
+    var go = function (msg) {
+      var u = xUrl();
+      if (win && !win.closed) { try { win.opener = null; } catch (e) { } win.location.href = u; setHint(msg); return; }
+      var late = window.open(u, '_blank', 'noopener');
+      /* Popups blocked: the image is already copied, so hand over a link
+         rather than navigating out of a page full of their work. */
+      if (late) setHint(msg); else hintLink(msg, u);
+    };
+
+    if (!wrote) {
+      ready.then(function (b) { saveBlob(b); go('Image saved. Attach it to the post.'); },
+                 function () { go('Post is ready — the image did not build, try SAVE PNG.'); });
+      return;
+    }
+    wrote.then(function () { go('Image copied. Paste it into the post.'); },
+               function () {
+                 ready.then(function (b) { saveBlob(b); go('Image saved. Attach it to the post.'); },
+                            function () { go('Post is ready — the image did not build, try SAVE PNG.'); });
+               });
   }
 
   function share() {
-    render(function (blob) {
-      if (!blob) return;
-      var file = null;
-      try { file = new File([blob], 'cuna.png', { type: 'image/png' }); } catch (e) { }
-      if (file && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-        navigator.share({ files: [file], text: 'CUNA cummin’ for ya 💦 cunatoken.com' })
-          .then(function () { }, function () { });
-        return;
+    var f = freshFile() || renderFileSync();
+    if (canShareFile(f)) {
+      navigator.share({ files: [f], text: 'CUNA cummin\u2019 for ya \ud83d\udca6 cunatoken.com' })
+        .then(function () { }, function () { });
+      return;
+    }
+    /* No share sheet, or the picture changed a moment ago: clipboard, then a
+       download. */
+    var ready = cache.blob && cache.key === stateKey()
+      ? Promise.resolve(cache.blob) : renderBlob();
+    var wrote = null;
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        wrote = navigator.clipboard.write([new ClipboardItem({ 'image/png': ready })]);
       }
-      /* No share sheet: fall back to the clipboard, then to a download. */
-      copyBlob(blob, function (copied) {
-        if (copied) setHint('Copied. Paste it anywhere.');
-        else { saveBlob(blob); setHint('Saved. Go and post it.'); }
-      });
-    });
+    } catch (e) { wrote = null; }
+    if (!wrote) { ready.then(function (b) { saveBlob(b); setHint('Saved. Go and post it.'); }, function () { }); return; }
+    wrote.then(function () { setHint('Copied. Paste it anywhere.'); },
+               function () { ready.then(function (b) { saveBlob(b); setHint('Saved. Go and post it.'); }, function () { }); });
   }
 
   /* ── boot ────────────────────────────────────────────────────────── */
@@ -854,6 +981,15 @@
     el.zoom = $('ml-zoom');
     el.photoRow = $('ml-photo');
     el.undo = document.querySelector('[data-ml="undo"]');
+
+    /* Say what will actually happen on the device in hand, rather than making
+       everyone read both halves. */
+    var note = $('ml-xnote');
+    if (note) {
+      note.textContent = handheld()
+        ? 'POST TO X sends the picture itself through the share sheet — pick X and it arrives attached, with the words already written. Nothing to save first.'
+        : 'X cannot take an image through a link, so the picture lands on your clipboard and the post opens with the words already written. Paste it in and post.';
+    }
 
     loadAssets();
     paintPalette();
@@ -1008,6 +1144,10 @@
       pan: function (x, y) { ph.ox += x; ph.oy += y; clampPan(); draw(); return { ox: ph.ox, oy: ph.oy }; },
       undo: function () { undoOnce(); return past.length; },
       undoDepth: function () { return past.length; },
+      cached: function () { return { has: !!cache.blob, fresh: !!cache.blob && cache.key === stateKey(), bytes: cache.blob ? cache.blob.size : 0 }; },
+      postToX: function () { postToX(); },
+      handheld: handheld,
+      syncFile: function () { var f = renderFileSync(); return f ? f.size : 0; },
       ring: function (v) { if (v !== undefined) { ring = !!v; syncRing(); draw(); } return ring; },
       xUrl: xUrl,
       render: function () { return new Promise(function (res) { render(function (b, c) { res({ w: c.width, h: c.height, bytes: b ? b.size : 0 }); }); }); }
