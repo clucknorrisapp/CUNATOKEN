@@ -89,3 +89,25 @@
 @media (prefers-reduced-motion: reduce) {
   .ml-chip, .ml-stage { transition: none; }
 }
+
+.ml-auto { margin-top: 1rem; }
+/* .btn sets its own display, which beats the UA's [hidden] rule — so the ring
+   toggle has to be hidden explicitly or it shows up outside PFP mode. */
+.ml-auto .btn[hidden] { display: none; }
+.ml-auto .btn-buy { font-size: 1.02rem; padding: .7rem 1.5rem; }
+
+.ml-sub {
+  margin: 1rem 0 0; text-align: center;
+  font-size: .74rem; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--pink-3); opacity: .8;
+}
+
+/* The X mark sits on the button's own baseline, not on the text baseline. */
+.ml-x { display: inline-flex; align-items: center; gap: .5rem; }
+.ml-x svg { width: 1em; height: 1em; fill: currentColor; flex: none; }
+
+.ml-xnote {
+  margin: .6rem auto 0; max-width: 34rem; text-align: center;
+  font-size: .8rem; font-weight: 600; color: var(--pink-3);
+}

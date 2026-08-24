@@ -75,7 +75,7 @@
     <div class="section-head">
       <p class="hero-kicker">make something stupid</p>
       <h1 class="section-title">MEME LAB</h1>
-      <p class="section-sub">Drop a picture in, cover it in tongues and tacos, and save it. Or switch to PFP and make yourself a round one.</p>
+      <p class="section-sub">Drop a picture in and hit SURPRISE ME — it lays itself out. Or switch to PFP for a round one with the ring already on. Post it straight to X when you like it.</p>
     </div>
 
     <div class="ml-wrap">
@@ -92,6 +92,12 @@
         <button class="btn btn-ghost btn-sm" type="button" data-ml="mode" data-mode="wide" aria-pressed="false">WIDE</button>
       </div>
 
+      <div class="ml-row ml-auto">
+        <button class="btn btn-buy" type="button" data-ml="auto">✨ SURPRISE ME</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-ml="ring" aria-pressed="true" hidden>RING ON</button>
+      </div>
+
+      <p class="ml-sub">…or place them yourself</p>
       <div class="ml-palette" id="ml-palette" role="group" aria-label="Stickers"></div>
 
       <div class="ml-fields">
@@ -112,9 +118,14 @@
       </div>
 
       <div class="ml-row ml-out">
-        <button class="btn btn-buy" type="button" data-ml="save">SAVE PNG</button>
+        <button class="btn btn-buy ml-x" type="button" data-ml="x">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+          POST TO X
+        </button>
+        <button class="btn btn-ghost" type="button" data-ml="save">SAVE PNG</button>
         <button class="btn btn-ghost" type="button" data-ml="share">SHARE</button>
       </div>
+      <p class="ml-xnote">X can't take the picture through a link, so we copy it to your clipboard and open the post with the words already written. Paste, post, done.</p>
 
       <p class="card ml-priv"><b>Your picture never leaves your phone.</b> There is nowhere for it to go — this site has no server and no accounts. Everything above is drawn in your own browser, and the file you save is built there too. Close the tab and it is gone.</p>
 
