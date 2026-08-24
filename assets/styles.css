@@ -881,3 +881,31 @@ a { color: var(--pink-3); }
 .arc-card p { margin: 0; font-size: .9rem; font-weight: 600; color: var(--pink-3); }
 .arc-all { text-align: center; margin: 1rem 0 0; }
 @media (prefers-reduced-motion: reduce) { .arc-card { transition: none; } }
+
+/* "across N pools" next to the totals it applies to. */
+.stat-note {
+  font-style: normal; font-size: .78em; font-weight: 700;
+  color: var(--pink-3); opacity: .85;
+}
+.stat-note:not(:empty)::before { content: "· "; }
+
+/* Meme Lab shortcut, next to the arcade one. Same reason it lives in the
+   socials group: that is the only part of the header that survives 980px. */
+.social-meme { background: var(--pink-3); color: var(--ink); }
+.social-meme:hover { background: var(--cream); }
+.social-meme[aria-current="page"] { background: var(--cream); color: var(--plum); }
+
+/* The header carries four icons now (two socials, arcade, meme lab) plus the
+   brand and the buy button, and that stopped fitting a phone. Measured, not
+   guessed: 320px overflowed by 35px and 430px by 29px — the latter because
+   the buy button grows its "$CUNA" ticker above 400px. */
+@media (max-width: 480px) {
+  .social-btn { width: 34px; height: 34px; border-width: 2px; box-shadow: 0 3px 0 var(--ink); }
+  .social-btn svg { width: 16px; height: 16px; }
+  .nav-social { gap: .3rem; }
+}
+/* On the very narrowest phones the wordmark goes: the logo beside it already
+   says the same thing, and the icons are the part people came to press. */
+@media (max-width: 350px) {
+  .nav-brand span { display: none; }
+}

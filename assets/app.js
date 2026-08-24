@@ -166,7 +166,7 @@
   var lastValues = {};
 
   // Latest good readings, shared with the wallet panel.
-  var state = { price: null, supply: null, solUsd: null, locked: null };
+  var state = { price: null, supply: null, locked: null };
 
   function animateField(name, value, formatter) {
     if (!isNum(value)) { setField(name, '—'); return; }
@@ -190,21 +190,124 @@
   // ──────────────────────────────────────────────────────────
   // Data: DexScreener (price / market cap / volume / liquidity)
   // ──────────────────────────────────────────────────────────
-  function fetchMarket() {
-    var url = 'https://api.dexscreener.com/latest/dex/pairs/' +
-      encodeURIComponent(CONFIG.chain) + '/' + encodeURIComponent(CONFIG.pair);
+  /* EVERY pool, not just the main one.
+     This used to ask DexScreener for a single pair id and report its numbers
+     as the token's. There are four Orca pools for CUNA, and the deepest one —
+     the one pinned here — carried only ~2.6k of the ~19.7k traded in a day.
+     The site was under-reporting its own volume by more than 7x.
 
+     Jupiter aggregates across venues already, so it is the primary source now
+     and there is no summing to get wrong. DexScreener stays as a fallback and
+     does the summing itself if Jupiter is unreachable; the two were compared
+     live and agree on volume to within about 1% (19,970 vs 19,726), which is
+     what makes the fallback trustworthy rather than merely present.
+
+     They do NOT agree on liquidity — Jupiter reported ~4.9k against
+     DexScreener's ~9.4k — because they are measuring different things: pool
+     TVL counts both sides of the pool, Jupiter's figure is nearer the depth
+     you can actually trade against. Neither is wrong. The page shows one
+     source at a time and labels which, rather than mixing them and producing
+     a number that reconciles with nothing. */
+  function fetchMarket() {
+    return fetchJup().catch(function () { return fetchDex(); });
+  }
+
+  function fetchJup() {
+    var url = 'https://lite-api.jup.ag/tokens/v2/search?query=' +
+      encodeURIComponent(CONFIG.mint);
     return fetch(url, { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('Jupiter responded ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        var list = Array.isArray(data) ? data : (data && data.data) || [];
+        var t = null;
+        for (var i = 0; i < list.length; i++) {
+          if (list[i] && list[i].id === CONFIG.mint) { t = list[i]; break; }
+        }
+        if (!t) throw new Error('Jupiter had no row for this mint');
+        var st = t.stats24h || {};
+        var bv = toNum(st.buyVolume), sv = toNum(st.sellVolume);
+        var vol = (isNum(bv) ? bv : 0) + (isNum(sv) ? sv : 0);
+        var buys = toNum(st.numBuys), sells = toNum(st.numSells);
+        return {
+          source: 'jup',
+          priceUsd: t.usdPrice,
+          priceChange: { h24: toNum(st.priceChange) },
+          marketCap: toNum(t.mcap),
+          fdv: toNum(t.fdv),
+          volume: (isNum(bv) || isNum(sv)) ? { h24: vol } : null,
+          liquidity: isNum(toNum(t.liquidity)) ? { usd: toNum(t.liquidity) } : null,
+          txns: (isNum(buys) || isNum(sells))
+            ? { h24: { buys: isNum(buys) ? buys : 0, sells: isNum(sells) ? sells : 0 } }
+            : null,
+          holders: toNum(t.holderCount)
+        };
+      });
+  }
+
+  function fetchDex() {
+    var all = 'https://api.dexscreener.com/latest/dex/tokens/' +
+      encodeURIComponent(CONFIG.mint);
+    return fetch(all, { cache: 'no-store' })
       .then(function (res) {
         if (!res.ok) throw new Error('DexScreener responded ' + res.status);
         return res.json();
       })
       .then(function (data) {
-        var pair = (data && data.pair) ||
-          (data && Array.isArray(data.pairs) && data.pairs[0]);
-        if (!pair) throw new Error('No pair data');
-        return pair;
+        var pairs = (data && Array.isArray(data.pairs)) ? data.pairs : [];
+        var ours = pairs.filter(function (p) {
+          if (!p || p.chainId !== CONFIG.chain) return false;
+          var bt = p.baseToken && p.baseToken.address;
+          var qt = p.quoteToken && p.quoteToken.address;
+          return bt === CONFIG.mint || qt === CONFIG.mint;
+        });
+        if (!ours.length) throw new Error('No pair data');
+        return aggregate(ours);
       });
+  }
+
+  /* Collapse N pools into the one shape renderMarket expects, so the rest of
+     the page never has to know how many pools exist. */
+  function aggregate(pairs) {
+    var vol = 0, liq = 0, buys = 0, sells = 0;
+    var haveVol = false, haveLiq = false, haveTx = false;
+
+    for (var i = 0; i < pairs.length; i++) {
+      var p = pairs[i];
+      var v = p.volume ? toNum(p.volume.h24) : null;
+      if (isNum(v)) { vol += v; haveVol = true; }
+      var l = p.liquidity ? toNum(p.liquidity.usd) : null;
+      if (isNum(l)) { liq += l; haveLiq = true; }
+      var t = p.txns && p.txns.h24;
+      if (t) {
+        var tb = toNum(t.buys), ts = toNum(t.sells);
+        if (isNum(tb)) { buys += tb; haveTx = true; }
+        if (isNum(ts)) { sells += ts; haveTx = true; }
+      }
+    }
+
+    /* Deepest pool decides price. A pool with a hundred dollars in it can
+       print any price it likes; the one holding the liquidity cannot. */
+    var lead = pairs[0], best = -1;
+    for (var j = 0; j < pairs.length; j++) {
+      var lj = pairs[j].liquidity ? toNum(pairs[j].liquidity.usd) : null;
+      var score = isNum(lj) ? lj : -1;
+      if (score > best) { best = score; lead = pairs[j]; }
+    }
+
+    return {
+      source: 'dex',
+      priceUsd: lead.priceUsd,
+      priceChange: lead.priceChange,
+      marketCap: lead.marketCap,
+      fdv: lead.fdv,
+      volume: haveVol ? { h24: vol } : null,
+      liquidity: haveLiq ? { usd: liq } : null,
+      txns: haveTx ? { h24: { buys: buys, sells: sells } } : null,
+      poolCount: pairs.length
+    };
   }
 
   function renderMarket(pair) {
@@ -215,10 +318,6 @@
     var liq = pair.liquidity ? toNum(pair.liquidity.usd) : null;
 
     state.price = price;
-    // priceUsd / priceNative is the SOL price, so the impact table can show
-    // dollars without a second API call.
-    var native = toNum(pair.priceNative);
-    state.solUsd = (isNum(price) && isNum(native) && native > 0) ? price / native : null;
     setField('price', fmtUsd(price));
     // DexScreener values this token against its ORIGINAL supply — it has not
     // picked up the ~4B burned — so its market cap runs ~41% high and
@@ -228,6 +327,17 @@
     setField('fdv', fmtUsd(isNum(price) && isNum(state.supply) ? price * state.supply : mcap));
     setField('volume24', fmtUsd(volume));
     setField('liquidity', fmtUsd(liq));
+
+    /* Say what these totals cover. Without it the figure is a number you have
+       to trust, and it will not match any single pair page — which reads as a
+       bug rather than as the point. */
+    var pools = toNum(pair.poolCount);
+    var note = pair.source === 'jup'
+      ? 'all pools'
+      : (isNum(pools) && pools > 1 ? 'across ' + fmtInt(pools) + ' pools' : 'all pools');
+    setField('poolnote', note);
+    setField('poolnote2', note);
+    setField('holders', isNum(toNum(pair.holders)) ? fmtInt(toNum(pair.holders)) : '—');
 
     setField('change24', fmtPct(change),
       isNum(change) ? (change >= 0 ? 'is-up' : 'is-down') : null);

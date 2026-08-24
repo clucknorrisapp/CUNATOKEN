@@ -1,0 +1,91 @@
+/* Meme Lab. Only what game.css does not already cover. */
+
+.ml-wrap { max-width: 44rem; margin: 0 auto; }
+
+.ml-stage {
+  display: grid; place-items: center;
+  padding: 8px;
+  border: var(--edge); border-radius: 18px;
+  background: rgba(36, 4, 15, .62);
+  box-shadow: var(--pop-lg);
+  transition: border-color .15s ease;
+}
+.ml-stage.is-over { border-color: var(--pink); }
+#ml-canvas {
+  display: block;
+  border-radius: 10px;
+  /* The canvas is the drag surface; without this a sticker drag scrolls the
+     page out from under the meme on every phone. */
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  cursor: grab;
+}
+#ml-canvas:active { cursor: grabbing; }
+
+.ml-hint {
+  min-height: 1.2em; margin: .5rem 0 0; text-align: center;
+  font-size: .85rem; font-weight: 700; color: var(--pink-3);
+}
+
+.ml-modes, .ml-row {
+  display: flex; flex-wrap: wrap; gap: .45rem;
+  justify-content: center; margin: .8rem 0 0;
+}
+.ml-modes .btn[aria-pressed="true"] {
+  background: var(--pink); color: var(--cream-2); border-color: var(--ink);
+}
+.ml-out { margin-top: 1rem; }
+
+.ml-palette {
+  display: grid; gap: .4rem; margin: .9rem 0 0;
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+}
+.ml-chip {
+  display: grid; place-items: center;
+  padding: 4px; aspect-ratio: 1;
+  background: rgba(36, 4, 15, .62);
+  border: 2px solid var(--ink); border-radius: 14px;
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+  transition: transform .1s ease, background .12s ease;
+}
+.ml-chip:hover, .ml-chip:focus-visible { background: var(--plum-3); }
+.ml-chip:active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
+.ml-chip canvas { width: 100%; height: 100%; display: block; }
+
+.ml-fields {
+  display: grid; gap: .5rem; margin: .9rem 0 0;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 520px) { .ml-fields { grid-template-columns: 1fr; } }
+.ml-field span {
+  display: block; font-size: .72rem; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--pink-3); margin-bottom: .25rem;
+}
+.ml-field input {
+  width: 100%; padding: .6rem .7rem;
+  font: inherit; font-weight: 700; color: var(--cream);
+  background: rgba(36, 4, 15, .72);
+  border: 2px solid var(--ink); border-radius: 12px;
+}
+.ml-field input:focus-visible { outline: 3px solid var(--pink); outline-offset: 1px; }
+
+/* A file input styled as a button: the real control is kept in the DOM and
+   made invisible rather than replaced, so the keyboard and screen readers
+   still get a real file picker. */
+.ml-file { position: relative; overflow: hidden; cursor: pointer; }
+.ml-file input {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+}
+
+.ml-priv {
+  margin-top: 1.2rem; font-size: .85rem; font-weight: 600;
+  color: var(--pink-3); text-align: center;
+}
+.ml-priv b { color: var(--cream); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ml-chip, .ml-stage { transition: none; }
+}
