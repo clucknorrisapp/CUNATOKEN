@@ -70,7 +70,7 @@
   var ring = true;             /* the automatic PFP ring */
   var autoCap = false;         /* captions we wrote, and may overwrite */
 
-  /* ── assets ──────────────────────────────────────────────────────── */
+  /* ── assets ── */
 
   function loadAssets() {
     var a = new Image();
@@ -112,7 +112,7 @@
     return true;
   }
 
-  /* ── layout ──────────────────────────────────────────────────────── */
+  /* ── layout ── */
 
   function layout() {
     var M = MODES[mode];
@@ -137,7 +137,7 @@
   var layoutT = 0;
   function scheduleLayout(ms) { clearTimeout(layoutT); layoutT = setTimeout(layout, ms || 60); }
 
-  /* ── drawing ─────────────────────────────────────────────────────── */
+  /* ── drawing ── */
 
   /* The photo is a picture you place, not a fixed background: cover/contain
      gives the starting scale, then zoom and pan move it under the frame. For
@@ -373,7 +373,7 @@
     g.restore();
   }
 
-  /* ── hit testing ─────────────────────────────────────────────────── */
+  /* ── hit testing ── */
 
   function toCanvas(e) {
     var b = el.canvas.getBoundingClientRect();
@@ -403,7 +403,7 @@
     return null;
   }
 
-  /* ── undo ────────────────────────────────────────────────────────── */
+  /* ── undo ── */
 
   /* Every destructive or fiddly action pushes one snapshot first. It is a
      toy, so a shallow stack of plain JSON is enough — the photo is not in it,
@@ -425,7 +425,7 @@
   }
   function syncUndo() { if (el.undo) el.undo.disabled = !past.length; }
 
-  /* ── interaction ─────────────────────────────────────────────────── */
+  /* ── interaction ── */
 
   var drag = null;
   var pointers = {};
@@ -535,7 +535,7 @@
 
   function clamp(a, v, b) { return v < a ? a : v > b ? b : v; }
 
-  /* ── palette ─────────────────────────────────────────────────────── */
+  /* ── palette ── */
 
   function paintPalette() {
     el.palette.innerHTML = '';
@@ -576,7 +576,7 @@
     setHint('');
   }
 
-  /* ── one tap ─────────────────────────────────────────────────────── */
+  /* ── one tap ── */
 
   function pickOne(arr) { return arr[Math.random() * arr.length | 0]; }
 
@@ -653,7 +653,7 @@
                 : 'Tap again for a different one, or drag anything to move it.');
   }
 
-  /* ── photo in ────────────────────────────────────────────────────── */
+  /* ── photo in ── */
 
   /* A 12-megapixel phone photo drags like treacle and buys nothing at 1080px
      across. Downscale once on the way in and everything after is smooth. */
@@ -696,15 +696,6 @@
 
   function setHint(t) { if (el.hint) el.hint.textContent = t || ''; }
 
-  function hintLink(t, url) {
-    if (!el.hint) return;
-    el.hint.textContent = t + ' ';
-    var a = document.createElement('a');
-    a.href = url; a.target = '_blank'; a.rel = 'noopener';
-    a.textContent = 'Open the post \u2192';
-    el.hint.appendChild(a);
-  }
-
   /* One way in and out of a mode, so the click handler and the test hook can
      never drift apart. Captions we wrote ourselves come off in PFP — they land
      on the ring and nobody wants a round avatar with a slogan across it. */
@@ -738,7 +729,7 @@
     el.ring.textContent = ring ? 'RING ON' : 'RING OFF';
   }
 
-  /* ── export ──────────────────────────────────────────────────────── */
+  /* ── export ── */
 
   var rendering = false;
 
@@ -873,18 +864,15 @@
      the point. Whatever is on the top line leads, if there is one. */
   function xText() {
     var top = (el.top.value || '').trim();
-    var lead = top ? '\u201c' + top.toUpperCase() + '\u201d' : 'made this in the $CUNA meme lab';
-    return lead + '\n\n$CUNA \ud83d\udc45 @cunatoken\nhttps://cunatoken.com/meme.html';
+    var lead = top ? '“' + top.toUpperCase() + '”' : 'made this in the $CUNA meme lab';
+    return lead + '\n\n$CUNA 👅 @cunatoken\nhttps://cunatoken.com/meme.html';
   }
 
   function xUrl() {
     return 'https://x.com/intent/post?text=' + encodeURIComponent(xText());
   }
 
-  /* X's web intent cannot carry an image, so the image goes to the clipboard
-     (or to the downloads folder) and the composer opens with the words already
-     in it — paste, post, done. The tab is opened up front, inside the click,
-     or the popup blocker eats it while toBlob is still working. */
+  /* Two ways the picture can travel, and the device decides which. */
   function postToX() {
     /* Phone: the share sheet carries the PNG itself into the X app, so the
        picture never has to touch the camera roll. Use the export kept warm in
@@ -903,69 +891,116 @@
     clipboardRoute();
   }
 
-  /* Desktop, or a phone that will not share files: X's web intent cannot
+  /* Desktop, or a phone that will not share files. X's web intent cannot
      carry an image, so the PNG goes to the clipboard and the composer opens
-     with the words already written. The ClipboardItem is built here, inside
-     the click, from a promise of the PNG — Safari rejects one built later. */
-  function clipboardRoute() {
-    var ready = cache.blob && cache.key === stateKey()
-      ? Promise.resolve(cache.blob) : renderBlob();
+     with the words already written.
 
-    /* Clipboard first: window.open consumes the transient activation, and a
-       clipboard write without one is refused outright on Safari. */
+     Three things this has to get right, none of which show up headless:
+       - the tab opens only after the write has settled; opening it first
+         moves focus, and a clipboard commit on an unfocused document is
+         refused;
+       - a real Blob goes in whenever one is ready, because not every browser
+         accepts a Promise inside ClipboardItem;
+       - the "now paste it" instruction has to survive on this page, since
+         the tab that would carry it is the one taking focus away. */
+  function clipboardRoute() {
+    writeClipboard(function (how) { openComposer(how); });
+  }
+
+  /* Shared by POST TO X and COPY IT AGAIN. Reports 'copied', 'saved' (the
+     browser refused, so it is in the downloads folder instead) or 'failed'. */
+  function writeClipboard(done) {
+    var fresh = (cache.blob && cache.key === stateKey()) ? cache.blob : null;
+    var ready = fresh ? Promise.resolve(fresh) : renderBlob();
+
     var wrote = null;
     try {
       if (navigator.clipboard && window.ClipboardItem) {
-        wrote = navigator.clipboard.write([new ClipboardItem({ 'image/png': ready })]);
+        wrote = navigator.clipboard.write([new ClipboardItem({ 'image/png': fresh || ready })]);
       }
     } catch (e) { wrote = null; }
 
-    var win = null;
-    try { win = window.open('', '_blank'); } catch (e) { }
-    var go = function (msg) {
-      var u = xUrl();
-      if (win && !win.closed) { try { win.opener = null; } catch (e) { } win.location.href = u; setHint(msg); return; }
-      var late = window.open(u, '_blank', 'noopener');
-      /* Popups blocked: the image is already copied, so hand over a link
-         rather than navigating out of a page full of their work. */
-      if (late) setHint(msg); else hintLink(msg, u);
+    var saveInstead = function () {
+      ready.then(function (b) { saveBlob(b); done('saved'); }, function () { done('failed'); });
     };
+    if (!wrote) { saveInstead(); return; }
+    wrote.then(function () { done('copied'); }, saveInstead);
+  }
 
-    if (!wrote) {
-      ready.then(function (b) { saveBlob(b); go('Image saved. Attach it to the post.'); },
-                 function () { go('Post is ready — the image did not build, try SAVE PNG.'); });
-      return;
+  function openComposer(how) {
+    /* Opened with noopener, which by spec returns null — so there is no way
+       to tell an opened tab from a blocked one. The link is therefore always
+       offered: redundant when the tab opened, and the only way through when
+       it did not. */
+    try { window.open(xUrl(), '_blank', 'noopener'); } catch (e) { }
+    showXPanel(how, xUrl());
+  }
+
+  var PASTE = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '') ? '⌘V' : 'Ctrl+V';
+
+  /* What just happened and what to do about it — stated on this page, where
+     it can still be read, with a way out of every failure. */
+  function showXPanel(how, url) {
+    var box = $('ml-xpanel');
+    if (!box) return;
+    while (box.firstChild) box.removeChild(box.firstChild);
+    box.hidden = false;
+
+    var msg = document.createElement('p');
+    msg.className = 'ml-xmsg';
+    msg.textContent =
+      how === 'copied' ? 'Picture copied. Over in the X tab, press ' + PASTE + ' to drop it into the post.' :
+      how === 'saved' ? 'This browser would not let us copy the picture, so it went to your downloads — drag that file into the post.' :
+                        'Could not build the picture. Try SAVE PNG.';
+    box.appendChild(msg);
+
+    var row = document.createElement('div');
+    row.className = 'ml-row';
+    if (url) {
+      var a = document.createElement('a');
+      a.className = 'btn btn-buy btn-sm';
+      a.href = url; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = 'OPEN THE POST →';
+      row.appendChild(a);
     }
-    wrote.then(function () { go('Image copied. Paste it into the post.'); },
-               function () {
-                 ready.then(function (b) { saveBlob(b); go('Image saved. Attach it to the post.'); },
-                            function () { go('Post is ready — the image did not build, try SAVE PNG.'); });
-               });
+    [['copyimg', 'COPY IT AGAIN'], ['save', 'SAVE PNG']].forEach(function (b) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-ghost btn-sm';
+      btn.setAttribute('data-ml', b[0]);
+      btn.textContent = b[1];
+      row.appendChild(btn);
+    });
+    box.appendChild(row);
+  }
+
+  /* Copying on its own, for when the X tab is already open: come back here,
+     press it, switch over, paste. */
+  function copyImage() {
+    writeClipboard(function (how) {
+      setHint(how === 'copied' ? 'Copied. Press ' + PASTE + ' in the post.'
+            : how === 'saved' ? 'Copying is blocked here — saved it instead.'
+                              : 'Could not build the picture.');
+    });
   }
 
   function share() {
     var f = freshFile() || renderFileSync();
     if (canShareFile(f)) {
-      navigator.share({ files: [f], text: 'CUNA cummin\u2019 for ya \ud83d\udca6 cunatoken.com' })
+      navigator.share({ files: [f], text: 'CUNA cummin’ for ya 💦 cunatoken.com' })
         .then(function () { }, function () { });
       return;
     }
     /* No share sheet, or the picture changed a moment ago: clipboard, then a
        download. */
-    var ready = cache.blob && cache.key === stateKey()
-      ? Promise.resolve(cache.blob) : renderBlob();
-    var wrote = null;
-    try {
-      if (navigator.clipboard && window.ClipboardItem) {
-        wrote = navigator.clipboard.write([new ClipboardItem({ 'image/png': ready })]);
-      }
-    } catch (e) { wrote = null; }
-    if (!wrote) { ready.then(function (b) { saveBlob(b); setHint('Saved. Go and post it.'); }, function () { }); return; }
-    wrote.then(function () { setHint('Copied. Paste it anywhere.'); },
-               function () { ready.then(function (b) { saveBlob(b); setHint('Saved. Go and post it.'); }, function () { }); });
+    writeClipboard(function (how) {
+      setHint(how === 'copied' ? 'Copied. Paste it anywhere.'
+            : how === 'saved' ? 'Saved. Go and post it.'
+                              : 'Could not build the picture.');
+    });
   }
 
-  /* ── boot ────────────────────────────────────────────────────────── */
+  /* ── boot ── */
 
   function init() {
     el.stage = $('ml-stage');
@@ -1075,6 +1110,8 @@
         draw();
       } else if (a === 'x') {
         postToX();
+      } else if (a === 'copyimg') {
+        copyImage();
       } else if (a === 'undo') {
         undoOnce();
       } else if (a === 'recenter') {
