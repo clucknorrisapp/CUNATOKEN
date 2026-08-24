@@ -157,3 +157,13 @@
 }
 
 .ml-row .btn[disabled] { opacity: .4; cursor: default; box-shadow: none; }
+
+/* What happened when you pressed POST TO X — said here, because the tab that
+   would say it is the one that just took focus. */
+.ml-xpanel { margin: .9rem 0 0; padding: .9rem 1rem; text-align: center; }
+.ml-xpanel[hidden] { display: none; }
+.ml-xmsg {
+  margin: 0 0 .7rem; font-size: .92rem; font-weight: 700;
+  line-height: 1.45; color: var(--cream);
+}
+.ml-xpanel .ml-row { margin: 0; }
