@@ -203,13 +203,36 @@
      what makes the fallback trustworthy rather than merely present.
 
      They do NOT agree on liquidity — Jupiter reported ~4.9k against
-     DexScreener's ~9.4k — because they are measuring different things: pool
-     TVL counts both sides of the pool, Jupiter's figure is nearer the depth
-     you can actually trade against. Neither is wrong. The page shows one
-     source at a time and labels which, rather than mixing them and producing
-     a number that reconciles with nothing. */
+     DexScreener's ~9.4k — because they measure different things: pool TVL
+     counts both sides of every pool, Jupiter's figure is nearer the depth you
+     can actually trade against. Neither is wrong, and pool TVL is the number
+     people expect to see, so liquidity comes from DexScreener (summed over
+     every pool) while everything else comes from Jupiter.
+
+     Both are fetched at once and neither can sink the panel on its own: if
+     DexScreener is down the page falls back to Jupiter's liquidity, if
+     Jupiter is down DexScreener supplies the lot, and each figure is labelled
+     with what it actually covers. */
   function fetchMarket() {
-    return fetchJup().catch(function () { return fetchDex(); });
+    /* Swallow a DexScreener failure here rather than at the join, so one
+       source being down never costs us the other. */
+    var dex = fetchDex().then(function (d) { return d; }, function () { return null; });
+
+    return fetchJup().then(function (j) {
+      return dex.then(function (d) {
+        if (d && d.liquidity) {
+          j.liquidity = d.liquidity;
+          j.liqSource = 'dex';
+          j.liqPools = d.poolCount;
+        }
+        return j;
+      });
+    }, function () {
+      return dex.then(function (d) {
+        if (!d) throw new Error('Jupiter and DexScreener both failed');
+        return d;
+      });
+    });
   }
 
   function fetchJup() {
@@ -328,15 +351,16 @@
     setField('volume24', fmtUsd(volume));
     setField('liquidity', fmtUsd(liq));
 
-    /* Say what these totals cover. Without it the figure is a number you have
+    /* Say what each total covers. Without it the figure is a number you have
        to trust, and it will not match any single pair page — which reads as a
-       bug rather than as the point. */
+       bug rather than as the point. Volume and liquidity now come from
+       different sources, so they get their own labels. */
     var pools = toNum(pair.poolCount);
-    var note = pair.source === 'jup'
-      ? 'all pools'
-      : (isNum(pools) && pools > 1 ? 'across ' + fmtInt(pools) + ' pools' : 'all pools');
-    setField('poolnote', note);
-    setField('poolnote2', note);
+    var poolsText = function (n) {
+      return isNum(n) && n > 1 ? 'across ' + fmtInt(n) + ' pools' : 'all pools';
+    };
+    setField('poolnote', pair.source === 'jup' ? 'all pools' : poolsText(pools));
+    setField('poolnote2', poolsText(isNum(toNum(pair.liqPools)) ? toNum(pair.liqPools) : pools));
     setField('holders', isNum(toNum(pair.holders)) ? fmtInt(toNum(pair.holders)) : '—');
 
     setField('change24', fmtPct(change),
