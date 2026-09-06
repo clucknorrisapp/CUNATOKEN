@@ -918,3 +918,8 @@ a { color: var(--pink-3); }
   font-size: .82rem; font-weight: 700;
   color: var(--cream); opacity: .78;
 }
+
+/* Both official domains for the lock program, named on the page. Lookalike
+   domains are how people get drained; saying which two are ours is free. */
+.lock-alts { margin: 0; text-align: center; line-height: 1.7; }
+.lock-alts a { color: var(--cream); text-decoration: underline; }
