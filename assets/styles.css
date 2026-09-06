@@ -909,3 +909,12 @@ a { color: var(--pink-3); }
 @media (max-width: 350px) {
   .nav-brand span { display: none; }
 }
+
+/* The lock CTA reuses the buy card's layout; this is the one line it adds —
+   the program is not open yet, and saying so up front is the difference
+   between a link people trust and one they don't. */
+.buy-cta-copy .lock-note {
+  margin: .5rem 0 0;
+  font-size: .82rem; font-weight: 700;
+  color: var(--cream); opacity: .78;
+}
