@@ -9,10 +9,11 @@
  *      each entry on the list is verified. One without the other is not an
  *      entry.
  *
- * The website list needs somewhere to live, and a static site has nowhere:
- * REGISTRY.endpoint is that somewhere. While it is empty this page CANNOT
- * record anything, and it says so rather than showing a green tick over a
- * write that never happened — someone's prize depends on it.
+ * The website list lives on the app that serves lock.cunatoken.com, at
+ * /api/cuna-draw/*. Every way that write can fail — closed window, rate
+ * limit, store unavailable, a refused address — is reported as a failure.
+ * The page never shows a tick over a write that did not happen: someone's
+ * prize depends on the difference.
  *
  * Nothing here asks for, accepts, or transmits anything but a public address.
  */
@@ -46,12 +47,12 @@
             this is empty NOTHING IS RECORDED and the page says so out loud. */
   var REGISTRY = {
     xPost: '',
-    endpoint: '',
+    endpoint: 'https://lock.cunatoken.com/api/cuna-draw/enter',
     /* GET check?address=<addr>, answering {ok:true, found:true|false}. Same
        story as endpoint: without it the page can confirm the holder half of
        the answer from the chain but not the list half, and says which is
        which rather than guessing. */
-    check: ''
+    check: 'https://lock.cunatoken.com/api/cuna-draw/check'
   };
 
   var HANDLE = 'cunatoken';
@@ -73,6 +74,7 @@
      make. Decode it properly: a Solana address is 32 bytes, no more, no less.
      Getting this wrong sends someone's entry nowhere. */
   function decodeBase58(str) {
+    /* Accumulated little-endian: bytes[0] is the least significant. */
     var bytes = [0];
     for (var i = 0; i < str.length; i++) {
       var v = B58.indexOf(str.charAt(i));
@@ -87,7 +89,12 @@
       }
       while (carry) { bytes.push(carry & 0xff); carry >>= 8; }
     }
-    /* leading '1's are leading zero bytes */
+    /* Drop the high-order zeros the accumulator carries, THEN add one zero
+       byte per leading '1'. Doing only the second half double-counts: a
+       pubkey whose first byte is 0x00 (about one address in 256, and every
+       address starting with '1') came out 33 bytes and was rejected as
+       invalid — a real address its owner could not enter with. */
+    while (bytes.length && bytes[bytes.length - 1] === 0) bytes.pop();
     for (var z = 0; z < str.length && str.charAt(z) === '1'; z++) bytes.push(0);
     return bytes.reverse();
   }
@@ -265,18 +272,24 @@
     return u;
   }
 
-  /* Best effort, and never the thing standing between a holder and their
-     entry: if the registry is unreachable the X reply still counts. */
+  /* The registry answers with a reason when it refuses, so pass the reason
+     through rather than flattening every failure into "something went wrong".
+     A rate limit and a closed window need different things from the user. */
   function register(address) {
-    if (!REGISTRY.endpoint) return Promise.resolve('none');
+    if (!REGISTRY.endpoint) return Promise.resolve({ how: 'none' });
     return fetch(REGISTRY.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: address })
     }).then(function (r) {
-      if (!r.ok) throw new Error('registry responded ' + r.status);
-      return 'saved';
-    }).catch(function () { return 'failed'; });
+      return r.json().catch(function () { return null; }).then(function (j) {
+        if (r.ok) return { how: 'saved', repeat: !!(j && j.recorded === false) };
+        if (r.status === 400) return { how: 'bad' };
+        if (r.status === 403) return { how: 'window', which: j && j.window };
+        if (r.status === 429 || r.status === 503) return { how: 'retry' };
+        return { how: 'failed' };
+      });
+    }).catch(function () { return { how: 'failed' }; });
   }
 
   /* "Am I entered?" — two independent questions, answered separately so a
@@ -353,17 +366,26 @@
     if (el.outLink) el.outLink.href = entryUrl(res.address);
     if (el.pinned) el.pinned.href = REGISTRY.xPost || ('https://x.com/' + HANDLE);
 
-    register(res.address).then(function (how) {
-      if (how === 'saved') {
-        say('good', 'You are on the website list. Now reply with the same address on the X thread — ' +
-                    'without that reply the entry does not count.');
-      } else if (how === 'none') {
-        /* No endpoint configured: claiming an entry here would be a lie. */
+    register(res.address).then(function (r) {
+      if (r.how === 'saved') {
+        say('good', (r.repeat ? 'Already on the website list — one entry, not two. '
+                              : 'You are on the website list. ') +
+                    'Now reply with the same address on the X thread — without that reply the ' +
+                    'entry does not count.');
+      } else if (r.how === 'window') {
+        say('bad', r.which === 'closed'
+          ? 'Entries have closed, so this was not recorded.'
+          : 'Entries are not open yet, so this was not recorded.');
+      } else if (r.how === 'retry') {
+        say('bad', 'The list is busy — nothing was recorded. Give it a minute and press enter again.');
+      } else if (r.how === 'bad') {
+        say('bad', 'The list would not accept that address. Check it against your wallet.');
+      } else if (r.how === 'none') {
         say('bad', 'The website list is not switched on yet, so this could not be recorded. ' +
                    'Reply on the X thread now and come back to enter here once it is live.');
       } else {
-        say('bad', 'Could not reach the website list. Reply on the X thread, then try entering ' +
-                   'here again — both are needed.');
+        say('bad', 'Could not reach the website list — nothing was recorded. Reply on the X thread, ' +
+                   'then try entering here again. Both are needed.');
       }
     });
 
