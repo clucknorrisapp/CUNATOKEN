@@ -81,7 +81,7 @@
     <div class="section-head">
       <p class="hero-kicker">official drawing</p>
       <h1 class="section-title">ENTER THE DRAWING</h1>
-      <p class="section-sub">Win <b>0.25 SOL</b>. Reply under the pinned post on X with your address, then enter it here. Holding over $1 of $CUNA gets you a second entry.</p>
+      <p class="section-sub">Win <b>0.25 SOL</b>. Enter your address here <b>and</b> reply with it under the pinned post on X — both, or it is not an entry. Holding over $1 of $CUNA gets you a second entry.</p>
     </div>
 
     <div class="dr-wrap">
@@ -116,13 +116,26 @@
         </p>
       </div>
 
+      <div class="card dr-lookup">
+        <h2 class="dr-rules-title">Am I entered?</h2>
+        <label class="dr-field" for="dr-check-addr">
+          <span>Check an address</span>
+          <input id="dr-check-addr" type="text" inputmode="text" spellcheck="false"
+                 autocomplete="off" autocapitalize="off"
+                 placeholder="paste the address you entered with" maxlength="64">
+        </label>
+        <p class="dr-msg" id="dr-check-msg" role="status" aria-live="polite"></p>
+        <button class="btn btn-ghost dr-go" type="button" id="dr-check-go">Check</button>
+      </div>
+
       <div class="card dr-bonus" id="dr-bonus" hidden>
         <p id="dr-bonus-text"></p>
       </div>
 
       <div class="card dr-out" id="dr-out" hidden>
-        <h2 class="dr-out-title">One step left</h2>
-        <p>Your entry is the reply on X. Post this under the pinned post on
+        <h2 class="dr-out-title">One step left — do not skip it</h2>
+        <p>You are in the website list. It only counts once the same address is also on the X thread,
+          which is how every entry gets checked. Post this under the pinned post on
           <a id="dr-pinned" href="https://x.com/cunatoken" target="_blank" rel="noopener">@cunatoken</a>:</p>
         <p class="dr-addr" id="dr-out-addr"></p>
         <p class="dr-check">Read it back against your wallet before you post. A Solana address carries
@@ -136,15 +149,23 @@
 
       <div class="card dr-rules">
         <h2 class="dr-rules-title">How it works</h2>
+        <p class="dr-both"><b>Both steps are required.</b> The drawing is run from the website list,
+          and every address on it is checked against the X thread before the wheel is spun. On X only,
+          or here only, is not an entry.</p>
         <ol>
           <li>Follow <a href="https://x.com/cunatoken" target="_blank" rel="noopener">@cunatoken</a> on X.</li>
-          <li>Reply to the pinned announcement post with your Solana address. <b>That reply is your entry</b> — it has to be there to count. The link to that post is also in the Telegram.</li>
-          <li>Paste the same address here and press enter, so it lands in the website registry too.</li>
-          <li>Hold more than $1 of $CUNA at that address <b>at the time of the drawing</b> and you get <b>a second entry</b>. This page reads what you are holding right now; what counts is the balance when the wheel is spun.</li>
+          <li><b>Enter your Solana address on this page.</b> This is the official list — the drawing is
+            run from it.</li>
+          <li><b>Reply to the pinned announcement post on X with the same address.</b> That reply is how
+            your entry is verified. No reply, no entry. The link to that post is also in the Telegram.</li>
+          <li>Hold more than $1 of $CUNA at that address <b>at the time of the drawing</b> and you get
+            <b>a second entry</b>. This page reads what you are holding right now; what counts is the
+            balance when the wheel is spun.</li>
         </ol>
         <p class="dr-registry-note" id="dr-registry-note" hidden>
-          This page keeps no list of its own — the site is static and has no server. Your entry is
-          the reply on X, which anyone can go and check.
+          <b>Heads up:</b> the website list is not switched on yet, so this page cannot record your
+          address right now. Reply on the X thread anyway — that reply is timestamped and nothing is
+          lost — and come back here once it is live.
         </p>
       </div>
 

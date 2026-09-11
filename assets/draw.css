@@ -81,3 +81,18 @@
 .dr-registry-note { margin: .8rem 0 0; font-size: .8rem; font-weight: 600; color: var(--pink-3); }
 
 .dr-check { margin: .6rem 0 0; font-size: .78rem; font-weight: 600; color: var(--pink-3); line-height: 1.5; }
+
+/* Both steps or nothing — the single most important sentence on the page. */
+.dr-both {
+  margin: 0 0 .8rem; padding: .6rem .75rem;
+  font-size: .86rem; font-weight: 700; line-height: 1.5;
+  color: var(--cream); background: rgba(255, 46, 136, .16);
+  border: 2px solid var(--pink); border-radius: 12px;
+}
+.dr-registry-note {
+  padding: .6rem .75rem; color: var(--cream);
+  background: rgba(255, 176, 80, .14);
+  border: 2px solid #ffb050; border-radius: 12px;
+}
+
+.dr-msg.is-wait { color: var(--pink-3); }

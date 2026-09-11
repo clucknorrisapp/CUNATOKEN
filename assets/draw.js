@@ -1,14 +1,18 @@
 /* CUNA DRAWING — paste a Solana address, get entered.
  *
- * This site is static: there is no server here and no keys, so the page on
- * its own cannot keep a list of anything. Two consequences, both deliberate:
+ * Two things have to happen for an entry to count, and the page says so at
+ * every step:
  *
- *   1. The entry that exists publicly is the reply under the pinned post on
- *      X. The page writes that reply for you, with your address in it, so
- *      the record is on X where anyone can audit it.
- *   2. If REGISTRY.endpoint is filled in, the address is ALSO posted there
- *      so the website has its own list. Until it is, the page says plainly
- *      that the X reply is the entry rather than pretending to store one.
+ *   1. The address is entered HERE. The website list is the official one —
+ *      the drawing is run from it.
+ *   2. The same address is replied under the pinned post on X. That is how
+ *      each entry on the list is verified. One without the other is not an
+ *      entry.
+ *
+ * The website list needs somewhere to live, and a static site has nowhere:
+ * REGISTRY.endpoint is that somewhere. While it is empty this page CANNOT
+ * record anything, and it says so rather than showing a green tick over a
+ * write that never happened — someone's prize depends on it.
  *
  * Nothing here asks for, accepts, or transmits anything but a public address.
  */
@@ -35,13 +39,19 @@
             ask for. Left empty, it falls back to a plain post the user has to
             put under the pinned one themselves.
 
-     endpoint: a URL that accepts POST {address} and records it. There is no
-            such endpoint on this static site; it would live on the same app
-            that serves lock.cunatoken.com. Empty means the website keeps no
-            list and the page says so. */
+     endpoint: a URL that accepts POST {address} and records it — the official
+            list the drawing is run from. There is no such endpoint on this
+            static site; it would live on the same app that serves
+            lock.cunatoken.com, or any form service that takes a POST. While
+            this is empty NOTHING IS RECORDED and the page says so out loud. */
   var REGISTRY = {
     xPost: '',
-    endpoint: ''
+    endpoint: '',
+    /* GET check?address=<addr>, answering {ok:true, found:true|false}. Same
+       story as endpoint: without it the page can confirm the holder half of
+       the answer from the chain but not the list half, and says which is
+       which rather than guessing. */
+    check: ''
   };
 
   var HANDLE = 'cunatoken';
@@ -269,6 +279,59 @@
     }).catch(function () { return 'failed'; });
   }
 
+  /* "Am I entered?" — two independent questions, answered separately so a
+     half-answer is never dressed up as a whole one:
+       on the list?  only the registry knows.
+       one entry or two?  the chain knows, right now. */
+  function lookup() {
+    var res = checkAddress(el.check.value);
+    if (!res.ok) { sayCheck('bad', res.why || 'Paste the address you entered with.'); return; }
+
+    sayCheck('wait', 'Looking…');
+    var onList = REGISTRY.check
+      ? fetch(REGISTRY.check + (REGISTRY.check.indexOf('?') < 0 ? '?' : '&') +
+              'address=' + encodeURIComponent(res.address), { cache: 'no-store' })
+          .then(function (r) { if (!r.ok) throw new Error('check ' + r.status); return r.json(); })
+          .then(function (d) { return d && d.ok ? !!d.found : null; })
+          .catch(function () { return null; })
+      : Promise.resolve(undefined);
+
+    Promise.all([onList, checkBonus(res.address)]).then(function (r) {
+      var listed = r[0], bonus = r[1];
+      var entries = bonus.ok ? (bonus.qualifies ? 2 : 1) : null;
+
+      var head;
+      if (listed === true) head = 'You are on the website list.';
+      else if (listed === false) head = 'This address is NOT on the website list — enter it above.';
+      else if (listed === null) head = 'Could not reach the website list just now.';
+      else head = 'The website list is not switched on yet, so it cannot be checked here.';
+
+      var tail;
+      if (entries === 2) {
+        tail = ' Holding ' + fmtInt(bonus.amount) + ' $CUNA (about ' + fmtUsd(bonus.usd) +
+               '), so this address counts as 2 entries.';
+      } else if (entries === 1) {
+        tail = bonus.amount > 0
+          ? ' Holding ' + fmtInt(bonus.amount) + ' $CUNA (about ' + fmtUsd(bonus.usd) +
+            ') — under $1, so 1 entry. Over $1 at draw time makes it 2.'
+          : ' No $CUNA at this address, so 1 entry. Over $1 at draw time makes it 2.';
+      } else {
+        tail = ' Could not read the chain, so the second entry could not be checked here.';
+      }
+
+      var reply = listed === true
+        ? ' Your reply has to be on the X thread too, or it does not count.'
+        : '';
+      sayCheck(listed === false ? 'bad' : 'good', head + tail + reply);
+    });
+  }
+
+  function sayCheck(kind, text) {
+    if (!el.checkMsg) return;
+    el.checkMsg.className = 'dr-msg is-' + kind;
+    el.checkMsg.textContent = text;
+  }
+
   function say(kind, text) {
     if (!el.msg) return;
     el.msg.className = 'dr-msg is-' + kind;
@@ -291,10 +354,17 @@
     if (el.pinned) el.pinned.href = REGISTRY.xPost || ('https://x.com/' + HANDLE);
 
     register(res.address).then(function (how) {
-      say('good',
-        how === 'saved'
-          ? 'Address checked and added to the registry. Now post the reply on X to finish your entry.'
-          : 'Address checked. Post the reply on X to finish your entry — that reply is your entry.');
+      if (how === 'saved') {
+        say('good', 'You are on the website list. Now reply with the same address on the X thread — ' +
+                    'without that reply the entry does not count.');
+      } else if (how === 'none') {
+        /* No endpoint configured: claiming an entry here would be a lie. */
+        say('bad', 'The website list is not switched on yet, so this could not be recorded. ' +
+                   'Reply on the X thread now and come back to enter here once it is live.');
+      } else {
+        say('bad', 'Could not reach the website list. Reply on the X thread, then try entering ' +
+                   'here again — both are needed.');
+      }
     });
 
     showBonus(res.address);
@@ -352,6 +422,9 @@
     el.outAddr = $('dr-out-addr');
     el.outLink = $('dr-out-link');
     el.pinned = $('dr-pinned');
+    el.check = $('dr-check-addr');
+    el.checkGo = $('dr-check-go');
+    el.checkMsg = $('dr-check-msg');
     el.bonus = $('dr-bonus');
     el.bonusText = $('dr-bonus-text');
 
@@ -367,6 +440,15 @@
     }
 
     el.go.addEventListener('click', submit);
+    if (el.checkGo) {
+      el.checkGo.addEventListener('click', lookup);
+      el.check.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); lookup(); }
+      });
+      el.check.addEventListener('paste', function () {
+        setTimeout(function () { el.check.value = el.check.value.trim(); }, 0);
+      });
+    }
     el.input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); submit(); }
     });
@@ -394,6 +476,12 @@
       url: function (a) { return entryUrl(a); },
       window: function () { return { opensAt: DRAW.opensAt, closesAt: DRAW.closesAt }; },
       bonus: function (a) { return checkBonus(a); },
+      /* Lets the test drive the recorded-entry path, which is the one every
+         real entry takes once the list is switched on. */
+      setEndpoint: function (u) { REGISTRY.endpoint = u; },
+      setPost: function (u) { REGISTRY.xPost = u; },
+      setCheck: function (u) { REGISTRY.check = u; },
+      lookup: function () { lookup(); },
       bonusUsd: BONUS_USD
     };
   }
