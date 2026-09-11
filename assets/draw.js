@@ -7,7 +7,9 @@
  *      the drawing is run from it.
  *   2. The same address is replied under the pinned post on X. That is how
  *      each entry on the list is verified. One without the other is not an
- *      entry.
+ *      entry — but that half happens on X, before they get here. This page
+ *      does not link back to X or compose anything: people arrive from the
+ *      post, and the only thing left to do is paste an address.
  *
  * The website list lives on the app that serves lock.cunatoken.com, at
  * /api/cuna-draw/*. Every way that write can fail — closed window, rate
@@ -35,18 +37,12 @@
 
   /* Where the entry is recorded.
 
-     xPost: the pinned post on @cunatoken. Fill this in with its URL and the
-            button becomes a REPLY to that exact post, which is what the rules
-            ask for. Left empty, it falls back to a plain post the user has to
-            put under the pinned one themselves.
-
      endpoint: a URL that accepts POST {address} and records it — the official
             list the drawing is run from. There is no such endpoint on this
             static site; it would live on the same app that serves
             lock.cunatoken.com, or any form service that takes a POST. While
             this is empty NOTHING IS RECORDED and the page says so out loud. */
   var REGISTRY = {
-    xPost: '',
     endpoint: 'https://lock.cunatoken.com/api/cuna-draw/enter',
     /* GET check?address=<addr>, answering {ok:true, found:true|false}. Same
        story as endpoint: without it the page can confirm the holder half of
@@ -54,8 +50,6 @@
        which rather than guessing. */
     check: 'https://lock.cunatoken.com/api/cuna-draw/check'
   };
-
-  var HANDLE = 'cunatoken';
 
   /* Holding more than a dollar of CUNA is worth a second entry, so the page
      reads the balance of the address you pasted and says whether it counts.
@@ -261,17 +255,6 @@
 
   /* ── entering ── */
 
-  function entryText(address) {
-    return 'Entering the $CUNA drawing 👅\n\n' + address;
-  }
-
-  function entryUrl(address) {
-    var u = 'https://x.com/intent/post?text=' + encodeURIComponent(entryText(address));
-    var id = REGISTRY.xPost && REGISTRY.xPost.match(/status\/(\d+)/);
-    if (id) u += '&in_reply_to=' + id[1];
-    return u;
-  }
-
   /* The registry answers with a reason when it refuses, so pass the reason
      through rather than flattening every failure into "something went wrong".
      A rate limit and a closed window need different things from the user. */
@@ -356,22 +339,14 @@
     if (!res.ok) { say('bad', res.why || 'Paste your Solana address first.'); el.input.focus(); return; }
     if (phase(Date.now()) !== 'open') { say('bad', 'Entries are not open right now.'); return; }
 
-    /* Open the tab inside the click: the popup blocker eats one opened later,
-       and the whole point of the button is landing in the composer. */
-    var win = null;
-    try { win = window.open(entryUrl(res.address), '_blank', 'noopener'); } catch (e) { }
-
     el.out.hidden = false;
     setText(el.outAddr, res.address);
-    if (el.outLink) el.outLink.href = entryUrl(res.address);
-    if (el.pinned) el.pinned.href = REGISTRY.xPost || ('https://x.com/' + HANDLE);
 
     register(res.address).then(function (r) {
       if (r.how === 'saved') {
-        say('good', (r.repeat ? 'Already on the website list — one entry, not two. '
-                              : 'You are on the website list. ') +
-                    'Now reply with the same address on the X thread — without that reply the ' +
-                    'entry does not count.');
+        say('good', r.repeat
+          ? 'Already on the website list — one entry, not two. Make sure it is on the X thread as well.'
+          : 'You are on the website list. It only counts if the same address is on the X thread too.');
       } else if (r.how === 'window') {
         say('bad', r.which === 'closed'
           ? 'Entries have closed, so this was not recorded.'
@@ -392,7 +367,6 @@
     showBonus(res.address);
 
     try { localStorage.setItem('cuna_draw_addr', res.address); } catch (e) { }
-    if (!win && el.outLink) el.outLink.focus();
   }
 
   /* The second entry, read live off the chain. Holdings are checked again
@@ -442,8 +416,6 @@
     el.msg = $('dr-msg');
     el.out = $('dr-out');
     el.outAddr = $('dr-out-addr');
-    el.outLink = $('dr-out-link');
-    el.pinned = $('dr-pinned');
     el.check = $('dr-check-addr');
     el.checkGo = $('dr-check-go');
     el.checkMsg = $('dr-check-msg');
@@ -455,7 +427,6 @@
     var lo = localLabel(DRAW.opensAt), lc = localLabel(DRAW.closesAt);
     if (lo && lc) setText($('dr-local'), 'Your time: ' + lo + ' → ' + lc);
 
-    if (el.pinned) el.pinned.href = REGISTRY.xPost || ('https://x.com/' + HANDLE);
     if (!REGISTRY.endpoint) {
       var n = $('dr-registry-note');
       if (n) n.hidden = false;
@@ -495,13 +466,11 @@
     el.state.__cuna = {
       check: function (a) { return checkAddress(a); },
       phase: function (t) { return phase(t === undefined ? Date.now() : t); },
-      url: function (a) { return entryUrl(a); },
       window: function () { return { opensAt: DRAW.opensAt, closesAt: DRAW.closesAt }; },
       bonus: function (a) { return checkBonus(a); },
       /* Lets the test drive the recorded-entry path, which is the one every
          real entry takes once the list is switched on. */
       setEndpoint: function (u) { REGISTRY.endpoint = u; },
-      setPost: function (u) { REGISTRY.xPost = u; },
       setCheck: function (u) { REGISTRY.check = u; },
       lookup: function () { lookup(); },
       bonusUsd: BONUS_USD
