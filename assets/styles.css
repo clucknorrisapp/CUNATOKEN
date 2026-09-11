@@ -903,11 +903,20 @@ a { color: var(--pink-3); }
   .social-btn { width: 34px; height: 34px; border-width: 2px; box-shadow: 0 3px 0 var(--ink); }
   .social-btn svg { width: 16px; height: 16px; }
   .nav-social { gap: .3rem; }
+  /* The "$CUNA" after "Buy" is the first thing to go: five icons need the
+     room, and the button still says Buy. Measured, not guessed — at 430px
+     the header ran 37px over without this. */
+  .nav-buy-ticker { display: none; }
 }
-/* On the very narrowest phones the wordmark goes: the logo beside it already
-   says the same thing, and the icons are the part people came to press. */
-@media (max-width: 350px) {
+/* Then the wordmark: the logo beside it already says the same thing, and the
+   icons are the part people came to press. */
+@media (max-width: 420px) {
   .nav-brand span { display: none; }
+}
+@media (max-width: 360px) {
+  .social-btn { width: 30px; height: 30px; }
+  .social-btn svg { width: 14px; height: 14px; }
+  .nav-social { gap: .22rem; }
 }
 
 /* The lock CTA reuses the buy card's layout; this is the one line it adds —
@@ -923,3 +932,21 @@ a { color: var(--pink-3); }
    domains are how people get drained; saying which two are ours is free. */
 .lock-alts { margin: 0; text-align: center; line-height: 1.7; }
 .lock-alts a { color: var(--cream); text-decoration: underline; }
+
+/* The drawing strip, injected under the header by drawbar.js while the
+   drawing is open. It sits in normal flow rather than fixed, so it scrolls
+   away instead of eating screen on a phone. */
+.drawbar {
+  display: flex; align-items: center; justify-content: center;
+  gap: .5rem; flex-wrap: wrap;
+  padding: .6rem 1rem;
+  font-size: .88rem; font-weight: 800; letter-spacing: .01em;
+  color: var(--ink); text-align: center;
+  background: linear-gradient(90deg, var(--pink), #ffb0d2, var(--pink));
+  border-bottom: 2px solid var(--ink);
+  text-decoration: none;
+}
+.drawbar:hover, .drawbar:focus-visible { filter: brightness(1.06); }
+.drawbar-emoji { font-size: 1.05em; }
+.drawbar-go { font-weight: 900; }
+@media (max-width: 360px) { .drawbar { font-size: .8rem; padding: .5rem .6rem; } }
